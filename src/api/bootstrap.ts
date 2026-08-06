@@ -19,7 +19,7 @@
  * `/workflow.savesession` call depends on. That side effect is the reason this
  * module fetches pages rather than reaching for a leaner endpoint.
  */
-import { getText, PlatformError } from './http';
+import { getHtml, PlatformError } from './http';
 import type {
   BlockProperties,
   BootData,
@@ -219,7 +219,10 @@ export function parseCanvasFragment(
   const connections: SessionConnection[] = [];
   const seen = new Set<string>();
 
-  const connectCall = /uuids\s*:\s*\[\s*'([^']+)'\s*,\s*'([^']+)'\s*\]/g;
+  // Match jsPlumb connect calls with either single- or double-quoted UUIDs.
+  // The platform template may output either quote style, and quotes may be
+  // backslash-escaped when the HTML was carried inside a JSON envelope.
+  const connectCall = /uuids\s*:\s*\[\s*(?:'|\\?"|&#0?39;)([^'"\]\\]+)(?:'|\\?"|&#0?39;)\s*,\s*(?:'|\\?"|&#0?39;)([^'"\]\\]+)(?:'|\\?"|&#0?39;)\s*\]/g;
   let m: RegExpExecArray | null;
   while ((m = connectCall.exec(html)) !== null) {
     const from = stripAnchor(m[1], canvasId);
@@ -276,29 +279,9 @@ export function parseStoredProperties(html: string): Map<string, MongoWObject> {
 
 const NUMERIC = /^\d+$/;
 
-/**
- * The platform may return a JSON envelope (`{ Body: "<html>…" }`) when
- * `X-Requested-With: XMLHttpRequest` is set, instead of the raw HTML page.
- * Unwrap the envelope so downstream parsers always receive HTML.
- */
-function unwrapEnvelope(raw: string): string {
-  const trimmedRaw = raw.trimStart();
-  if (trimmedRaw.startsWith('{') || trimmedRaw.startsWith('[')) {
-    try {
-      const envelope = JSON.parse(raw) as Record<string, unknown>;
-      if (typeof envelope.Body === 'string') {
-        return envelope.Body;
-      }
-    } catch {
-      // Not valid JSON — treat the whole response as HTML.
-    }
-  }
-  return raw;
-}
-
 async function fetchShell(param: string): Promise<ShellInfo> {
-  const raw = await getText(`/workflow.debugger/${encodeURIComponent(param)}`);
-  return parseDebuggerShell(unwrapEnvelope(raw));
+  const html = await getHtml(`/workflow.debugger/${encodeURIComponent(param)}`);
+  return parseDebuggerShell(html);
 }
 
 /**
@@ -331,15 +314,13 @@ export async function loadWorkflow(param: string): Promise<BootData> {
 
   const { workflowId, shortCode } = shell;
 
-  const [fragmentRaw, storedRaw] = await Promise.all([
-    getText(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`),
+  const [fragmentHtml, storedHtml] = await Promise.all([
+    getHtml(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`),
     shortCode
-      ? getText(`/workflow.settings/${encodeURIComponent(shortCode)}/json`).catch(() => '')
+      ? getHtml(`/workflow.settings/${encodeURIComponent(shortCode)}/json`).catch(() => '')
       : Promise.resolve(''),
   ]);
 
-  const fragmentHtml = unwrapEnvelope(fragmentRaw);
-  const storedHtml = unwrapEnvelope(storedRaw);
   const { blocks, connections } = parseCanvasFragment(fragmentHtml, workflowId);
   const stored = storedHtml ? parseStoredProperties(storedHtml) : new Map<string, MongoWObject>();
 
@@ -373,6 +354,6 @@ export async function loadWorkflow(param: string): Promise<BootData> {
 export async function reloadGraph(
   workflowId: string,
 ): Promise<{ blocks: SessionBlock[]; connections: SessionConnection[] }> {
-  const raw = await getText(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`);
-  return parseCanvasFragment(unwrapEnvelope(raw), workflowId);
+  const html = await getHtml(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`);
+  return parseCanvasFragment(html, workflowId);
 }

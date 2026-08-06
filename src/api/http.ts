@@ -95,6 +95,27 @@ export async function getText(url: string): Promise<string> {
 }
 
 /**
+ * GET returning raw HTML — omits `X-Requested-With` so the platform renders
+ * the full page / fragment rather than wrapping it in a JSON envelope.
+ */
+export async function getHtml(url: string): Promise<string> {
+  const { text, res } = await request(url, { method: 'GET' });
+  if (!res.ok) throw new PlatformError(`${url} failed (${res.status})`, res.status);
+
+  // If the response is still a JSON envelope (some platform versions always
+  // wrap), unwrap it transparently.
+  const trimmed = text.trimStart();
+  if (trimmed.startsWith('{')) {
+    try {
+      const envelope = JSON.parse(text) as Record<string, unknown>;
+      if (typeof envelope.Body === 'string') return envelope.Body;
+    } catch { /* not JSON — return as-is */ }
+  }
+
+  return text;
+}
+
+/**
  * POST a form and parse JSON when possible.
  * `savesession` answers `[]` or an empty body on success, which is not an error.
  */
