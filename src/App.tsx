@@ -15,9 +15,9 @@ import { FullPageError, FullPageLoader } from './components/ui/feedback';
  */
 function readRoute(): { param: string } {
   let path = window.location.pathname;
-  const base = import.meta.env.BASE_URL;
-  if (path.startsWith(base)) {
-    path = path.slice(base.length);
+  const routeBase = '/workflow/debugger/';
+  if (path.startsWith(routeBase)) {
+    path = path.slice(routeBase.length);
   }
   path = path.replace(/^\/+/, '').replace(/\/+$/, '');
   return { param: decodeURIComponent(path) };
@@ -101,8 +101,8 @@ function NoWorkflowSelected() {
           e.preventDefault();
           const id = value.trim();
           if (id) {
-            const base = import.meta.env.BASE_URL;
-            const newPath = `${base}${base.endsWith('/') ? '' : '/'}${encodeURIComponent(id)}`;
+            const routeBase = '/workflow/debugger/';
+            const newPath = `${routeBase}${routeBase.endsWith('/') ? '' : '/'}${encodeURIComponent(id)}`;
             window.history.pushState({}, '', newPath);
             window.dispatchEvent(new Event('popstate'));
           }

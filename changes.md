@@ -34,6 +34,11 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 **Issue:** The app used hash-based routing (e.g. `/#/123`), making the URLs less standard.
 **Solution:** Switched from hash routing to standard browser history routing (e.g. `/workflow/debugger/123`).
 - **`src/App.tsx`**: Updated the `readRoute` function to parse `window.location.pathname` instead of `window.location.hash`.
-- Replaced the `hashchange` event listener with the `popstate` event.
-- Updated the manual form submission to use `window.history.pushState` to update the URL natively without a hash.
 - Added `/// <reference types="vite/client" />` to resolve TypeScript errors associated with using `import.meta.env.BASE_URL` to strip the `/workflow/debugger/` prefix cleanly.
+
+## 5. Asset Base Path Modification
+
+**Issue:** The build was generating assets pointing to `/workflow/debugger/assets`, but the requirement was to point them to `/workflow/debugger/dist/assets`.
+**Solution:**
+- Updated the `base` property in `vite.config.ts` from `APP_BASE` (which is `/workflow/debugger/`) to explicitly `/workflow/debugger/dist/`.
+- Decoupled `App.tsx` routing from Vite's `base` configuration by hardcoding `routeBase = '/workflow/debugger/'` rather than relying on `import.meta.env.BASE_URL`. This ensures routing still evaluates paths starting from the intended host path while JS and CSS static assets resolve to `dist/`.

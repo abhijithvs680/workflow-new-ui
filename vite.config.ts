@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
   const outDir = env.VIZRU_OUT_DIR || 'dist';
 
   return {
-    base: APP_BASE,
+    base: '/workflow/debugger/dist/',
     plugins: [react()],
     resolve: {
       alias: {
