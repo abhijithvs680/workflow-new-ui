@@ -3,7 +3,6 @@ import { errorText } from '@/api/http';
 import { settingsApi, workflowApi, type WorkflowVersion } from '@/api/workflow';
 import Modal from './ui/Modal';
 import { EmptyState, InlineError, Spinner } from './ui/feedback';
-import { TrashIcon } from './ui/icons';
 
 const SCHEDULES: Array<[string, string]> = [
   ['0', 'Not scheduled'],
@@ -14,8 +13,6 @@ const SCHEDULES: Array<[string, string]> = [
   ['month', 'Monthly'],
 ];
 
-type Tab = 'runtime' | 'versions';
-
 interface Props {
   workflowId: string;
   shortCode: string;
@@ -25,10 +22,6 @@ interface Props {
   notify: (text: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
-/**
- * Workflow-level settings: execution logging, schedule, and saved versions.
- * These write through the same endpoints as the classic settings drawer.
- */
 export default function WorkflowSettings({
   workflowId,
   shortCode,
@@ -36,17 +29,20 @@ export default function WorkflowSettings({
   onVersionApplied,
   notify,
 }: Props) {
-  const [tab, setTab] = useState<Tab>('runtime');
-
+  // Runtime state
   const [enableLog, setEnableLog] = useState(true);
   const [schedule, setSchedule] = useState('0');
   const [hour, setHour] = useState('');
   const [savingRuntime, setSavingRuntime] = useState(false);
   const [runtimeError, setRuntimeError] = useState('');
 
+  // Versions state
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
   const [versionsBusy, setVersionsBusy] = useState(false);
   const [versionsError, setVersionsError] = useState('');
+  
+  // Create Version Modal state
+  const [showCreateVersion, setShowCreateVersion] = useState(false);
   const [note, setNote] = useState('');
 
   const loadVersions = useCallback(async () => {
@@ -63,8 +59,8 @@ export default function WorkflowSettings({
   }, [shortCode]);
 
   useEffect(() => {
-    if (tab === 'versions') void loadVersions();
-  }, [tab, loadVersions]);
+    void loadVersions();
+  }, [loadVersions]);
 
   const saveRuntime = async () => {
     setSavingRuntime(true);
@@ -85,6 +81,7 @@ export default function WorkflowSettings({
       await settingsApi.createVersion(shortCode, note);
       setNote('');
       notify('Version saved.', 'success');
+      setShowCreateVersion(false);
       await loadVersions();
     } catch (e) {
       setVersionsError(errorText(e, 'Could not save a version.'));
@@ -119,171 +116,148 @@ export default function WorkflowSettings({
   };
 
   return (
-    <Modal
-      title="Workflow settings"
-      subtitle={shortCode ? `Short code ${shortCode}` : undefined}
-      size="md"
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="viz-btn" onClick={onClose}>
-            Close
-          </button>
-          {tab === 'runtime' ? (
-            <button type="button" className="viz-btn is-primary" onClick={() => void saveRuntime()} disabled={savingRuntime}>
-              {savingRuntime ? 'Saving…' : 'Save settings'}
-            </button>
-          ) : null}
-        </>
-      }
-    >
-      <div className="viz-tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'runtime'}
-          className={`viz-tab${tab === 'runtime' ? ' is-active' : ''}`}
-          onClick={() => setTab('runtime')}
-        >
-          Runtime
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'versions'}
-          className={`viz-tab${tab === 'versions' ? ' is-active' : ''}`}
-          onClick={() => setTab('versions')}
-        >
-          Versions
-        </button>
-      </div>
-
-      <div className="viz-tabpanel" role="tabpanel">
-        {tab === 'runtime' ? (
-          <div className="viz-form">
-            {runtimeError ? <InlineError>{runtimeError}</InlineError> : null}
-
-            <div className="viz-field-grid">
-              <div className="viz-field">
-                <span className="viz-field-label">Execution log</span>
-                <div className="viz-field-control">
+    <>
+      <div className="viz-settings-overlay" onClick={onClose}>
+        <div className="viz-settings-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="viz-settings-header">
+            <div>
+              <h3>Settings</h3>
+              <span className="viz-settings-subtitle">({shortCode})</span>
+            </div>
+            <button className="viz-settings-close" onClick={onClose}>&times;</button>
+          </div>
+          
+          <div className="viz-settings-body">
+            
+            {/* Runtime Settings */}
+            <div className="viz-settings-section">
+              <div className="viz-settings-section-header">
+                <span>Runtime Settings</span>
+                <button onClick={() => void saveRuntime()} disabled={savingRuntime}>
+                  {savingRuntime ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+              {runtimeError ? <InlineError>{runtimeError}</InlineError> : null}
+              <div className="viz-field-grid" style={{ gap: '8px 12px' }}>
+                <div className="viz-field is-full">
                   <label className="viz-checkbox">
                     <input type="checkbox" checked={enableLog} onChange={(e) => setEnableLog(e.target.checked)} />
-                    <span>Record a log for every run</span>
+                    <span style={{fontSize: '12px'}}>Record execution log</span>
                   </label>
-                  <p className="viz-field-help">
-                    Runs cannot be inspected in the debug dock while logging is off.
-                  </p>
                 </div>
-              </div>
-
-              <div className="viz-field">
-                <label className="viz-field-label" htmlFor="viz-schedule">
-                  Schedule
-                </label>
-                <div className="viz-field-control">
+                <div className="viz-field is-full">
                   <select
-                    id="viz-schedule"
-                    className="viz-select"
+                    className="viz-select is-sm"
                     value={schedule}
                     onChange={(e) => setSchedule(e.target.value)}
                   >
                     {SCHEDULES.map(([value, labelText]) => (
-                      <option key={value} value={value}>
-                        {labelText}
-                      </option>
+                      <option key={value} value={value}>{labelText}</option>
                     ))}
                   </select>
                 </div>
-              </div>
-
-              {schedule === 'day' ? (
-                <div className="viz-field">
-                  <label className="viz-field-label" htmlFor="viz-hour">
-                    Hour
-                  </label>
-                  <div className="viz-field-control">
+                {schedule === 'day' ? (
+                  <div className="viz-field is-full">
                     <input
-                      id="viz-hour"
-                      className="viz-input"
+                      className="viz-input is-sm"
                       type="number"
                       min={0}
                       max={23}
+                      placeholder="Hour (0-23)"
                       value={hour}
                       onChange={(e) => setHour(e.target.value)}
                     />
                   </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Versions Section */}
+            <div className="viz-settings-section">
+              <div className="viz-settings-section-header">
+                <span>Versions</span>
+                <button onClick={() => setShowCreateVersion(true)}>Create</button>
+              </div>
+              <a className="viz-settings-link" onClick={() => void loadVersions()}>View history</a>
+              
+              {versionsError ? <InlineError>{versionsError}</InlineError> : null}
+              {versionsBusy && versions.length === 0 ? <Spinner label="Loading..." /> : null}
+              {!versionsBusy && versions.length === 0 ? <EmptyState>No saved versions yet.</EmptyState> : null}
+              
+              {versions.length > 0 ? (
+                <div style={{ marginTop: '8px' }}>
+                  {versions.map((v) => {
+                    const id = String(v._id || v.id || '');
+                    const dateStr = v['created-at'] ? String(v['created-at']) : id;
+                    return (
+                      <div key={id} className="viz-settings-version-item">
+                        <div>
+                          <div className="viz-settings-version-date">{dateStr}</div>
+                          <div className="viz-settings-version-note">{v.note || <em>no note</em>}</div>
+                        </div>
+                        <div className="viz-settings-version-actions">
+                          <a onClick={() => void applyVersion(id)}>Apply</a>
+                          <a className="is-danger" onClick={() => void deleteVersion(id)}>Delete</a>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : null}
             </div>
-
-            <p className="viz-field-note">
-              Category, connected app and reusable-input settings are not duplicated here — open them from the
-              classic settings drawer, which remains available.
-            </p>
-          </div>
-        ) : (
-          <div className="viz-form">
-            {versionsError ? <InlineError>{versionsError}</InlineError> : null}
-
-            <div className="viz-repeat-row">
-              <input
-                className="viz-input"
-                placeholder="Note for this version (optional)"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                aria-label="Version note"
-              />
-              <button type="button" className="viz-btn" onClick={() => void createVersion()} disabled={versionsBusy || !shortCode}>
-                Save version
-              </button>
+            
+            {/* Add to category */}
+            <div className="viz-settings-section">
+              <span className="viz-settings-section-title">Add to category</span>
+              <div className="viz-settings-row">
+                <input placeholder="Add Category" className="viz-input is-sm" />
+                <button>Add Category</button>
+              </div>
             </div>
-
-            {versionsBusy ? <Spinner label="Working…" /> : null}
-
-            {!versionsBusy && versions.length === 0 ? (
-              <EmptyState>No saved versions yet.</EmptyState>
-            ) : null}
-
-            {versions.length > 0 ? (
-              <table className="viz-table">
-                <thead>
-                  <tr>
-                    <th scope="col">Note</th>
-                    <th scope="col">Id</th>
-                    <th scope="col" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {versions.map((v) => {
-                    const id = String(v._id || v.id || '');
-                    return (
-                      <tr key={id}>
-                        <td>{v.note || <em className="viz-null">no note</em>}</td>
-                        <td className="viz-mono">{id}</td>
-                        <td className="viz-table-actions">
-                          <button type="button" className="viz-btn is-sm" onClick={() => void applyVersion(id)}>
-                            Restore
-                          </button>
-                          <button
-                            type="button"
-                            className="viz-icon-btn"
-                            title="Delete version"
-                            aria-label="Delete version"
-                            onClick={() => void deleteVersion(id)}
-                          >
-                            <TrashIcon size={13} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            ) : null}
+            
+            {/* Connect to an App */}
+            <div className="viz-settings-section">
+              <span className="viz-settings-section-title">Connect to an App</span>
+              <select className="viz-select is-sm"><option>Select</option></select>
+            </div>
+            
+            {/* Reusable */}
+            <div className="viz-settings-section">
+              <span className="viz-settings-section-title">Reusable</span>
+              <button>Convert</button>
+            </div>
           </div>
-        )}
+        </div>
       </div>
-    </Modal>
+
+      {showCreateVersion && (
+        <Modal
+          title="Create version"
+          size="sm"
+          onClose={() => setShowCreateVersion(false)}
+          footer={
+            <>
+              <button type="button" className="viz-btn" onClick={() => setShowCreateVersion(false)}>
+                Cancel
+              </button>
+              <button type="button" className="viz-btn is-primary" onClick={() => void createVersion()} disabled={versionsBusy}>
+                {versionsBusy ? 'Saving...' : 'Create version'}
+              </button>
+            </>
+          }
+        >
+          <div className="viz-form">
+            <textarea
+              className="viz-textarea"
+              placeholder="e.g: Version 3.1 (BR 5.6)"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              aria-label="Version note"
+              autoFocus
+            />
+          </div>
+        </Modal>
+      )}
+    </>
   );
 }

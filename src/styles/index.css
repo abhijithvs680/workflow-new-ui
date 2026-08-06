@@ -1360,17 +1360,18 @@ fieldset:disabled .viz-textarea {
 
 .viz-cond-body {
   position: relative;
-  width: 100px;
-  height: 100px;
+  width: 110px;
+  height: 110px;
   margin: 0 auto;
 }
 
 .viz-cond-diamond {
   position: absolute;
   inset: 14px;
-  border: 1px solid #f97316;
+  border: none;
   border-radius: 8px;
-  background: #fff7ed;
+  background: linear-gradient(135deg, #fb923c, #ea580c);
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
   transform: rotate(45deg);
   display: flex;
   align-items: center;
@@ -1378,8 +1379,7 @@ fieldset:disabled .viz-textarea {
 }
 
 .viz-node.skin-condition.is-selected .viz-cond-diamond {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px var(--primary-100);
+  box-shadow: 0 0 0 2px var(--primary-100), 0 2px 8px rgba(234, 88, 12, 0.35);
 }
 
 .viz-cond-diamond-face {
@@ -1387,12 +1387,13 @@ fieldset:disabled .viz-textarea {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #c2410c;
+  color: #fff;
 }
 
 .viz-cond-diamond-face img {
   width: 22px;
   height: 22px;
+  filter: brightness(0) invert(1);
 }
 
 .viz-cond-diamond-face em {
@@ -1416,13 +1417,19 @@ fieldset:disabled .viz-textarea {
 .viz-cond-branch-yes {
   top: 24%;
   left: calc(100% - 4px);
-  color: var(--branch-yes);
+  background: var(--branch-yes);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .viz-cond-branch-no {
   top: calc(100% - 2px);
   left: 20%;
-  color: var(--branch-no);
+  background: var(--branch-no);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 /* Handles ---------------------------------------------------------------- */
@@ -1446,10 +1453,12 @@ fieldset:disabled .viz-textarea {
 
 .viz-handle-yes {
   border-color: var(--branch-yes);
+  background: var(--branch-yes);
 }
 
 .viz-handle-no {
   border-color: var(--branch-no);
+  background: var(--branch-no);
 }
 
 .viz-handle-out {
@@ -1484,13 +1493,15 @@ fieldset:disabled .viz-textarea {
 }
 
 .viz-edge-label.is-yes .viz-edge-pill {
+  background: var(--branch-yes);
   border-color: var(--branch-yes);
-  color: var(--branch-yes);
+  color: #fff;
 }
 
 .viz-edge-label.is-no .viz-edge-pill {
+  background: var(--branch-no);
   border-color: var(--branch-no);
-  color: var(--branch-no);
+  color: #fff;
 }
 
 .viz-edge-delete {
@@ -2187,4 +2198,200 @@ fieldset:disabled .viz-textarea {
   .viz-overlay {
     padding: 10px;
   }
+}
+
+/* ── Settings Panel (right-side drawer) ── */
+.viz-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.viz-settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: var(--surface-raised, #fff);
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  z-index: 1201;
+  animation: slideInRight 0.2s ease-out;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.viz-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.viz-settings-header h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--ink-900, #111);
+}
+
+.viz-settings-subtitle {
+  font-size: 12px;
+  color: var(--ink-400, #9ca3af);
+}
+
+.viz-settings-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--ink-500, #6b7280);
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.viz-settings-close:hover {
+  color: var(--ink-900, #111);
+}
+
+.viz-settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.viz-settings-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line, #e5e7eb);
+}
+
+.viz-settings-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.viz-settings-section-header span {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900, #111);
+}
+
+.viz-settings-section-header button {
+  padding: 3px 12px;
+  border: 1px solid var(--primary, #3b82f6);
+  border-radius: 4px;
+  background: none;
+  color: var(--primary, #3b82f6);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.viz-settings-section-header button:hover {
+  background: var(--primary-050, #eff6ff);
+}
+
+.viz-settings-section-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900, #111);
+  margin-bottom: 8px;
+}
+
+.viz-settings-link {
+  font-size: 12px;
+  color: var(--primary, #3b82f6);
+  cursor: pointer;
+  text-decoration: none;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.viz-settings-link:hover {
+  text-decoration: underline;
+}
+
+.viz-settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.viz-settings-row input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--line, #d1d5db);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.viz-settings-row button,
+.viz-settings-section > button {
+  padding: 5px 12px;
+  border: 1px solid var(--primary, #3b82f6);
+  border-radius: 4px;
+  background: none;
+  color: var(--primary, #3b82f6);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.viz-settings-section > select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--line, #d1d5db);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.viz-settings-version-item {
+  padding: 6px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line-light, #f3f4f6);
+}
+
+.viz-settings-version-item:last-child {
+  border-bottom: none;
+}
+
+.viz-settings-version-date {
+  color: var(--primary, #3b82f6);
+  font-size: 12px;
+}
+
+.viz-settings-version-note {
+  color: var(--ink-400, #9ca3af);
+  font-size: 11px;
+}
+
+.viz-settings-version-actions {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.viz-settings-version-actions a {
+  color: var(--primary, #3b82f6);
+  cursor: pointer;
+}
+
+.viz-settings-version-actions a:hover {
+  text-decoration: underline;
+}
+
+.viz-settings-version-actions a.is-danger {
+  color: var(--danger, #ef4444);
 }
