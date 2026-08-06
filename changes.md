@@ -28,3 +28,12 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 - **Structure:** Removed the tabbed layout (Runtime/Versions) and consolidated all settings into a single scrollable panel.
 - **New Sections:** Added placeholder sections for "Add to category", "Connect to an App", and "Reusable" with basic UI elements (inputs, dropdowns, buttons) matching the reference design.
 - **Versions List:** Redesigned the versions list to show formatted rows with the version ID/Note and inline actions (Restore, Delete), with a "Create" button in the section header. The create action still triggers a centered modal for text input.
+
+## 4. Removed Hash Routing (`#`)
+
+**Issue:** The app used hash-based routing (e.g. `/#/123`), making the URLs less standard.
+**Solution:** Switched from hash routing to standard browser history routing (e.g. `/workflow/debugger/123`).
+- **`src/App.tsx`**: Updated the `readRoute` function to parse `window.location.pathname` instead of `window.location.hash`.
+- Replaced the `hashchange` event listener with the `popstate` event.
+- Updated the manual form submission to use `window.history.pushState` to update the URL natively without a hash.
+- Added `/// <reference types="vite/client" />` to resolve TypeScript errors associated with using `import.meta.env.BASE_URL` to strip the `/workflow/debugger/` prefix cleanly.
