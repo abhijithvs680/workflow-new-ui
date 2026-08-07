@@ -88,6 +88,8 @@ export default function Palette({
       <div className="viz-palette-search">
         <input
           ref={searchRef}
+          className="viz-input"
+          style={{ width: '100%' }}
           type="search"
           value={query}
           placeholder="Search blocks…"

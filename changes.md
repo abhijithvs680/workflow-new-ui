@@ -58,3 +58,8 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 
 **Issue:** The "Edit", "Clone", and "Delete" buttons were showing up in the top header toolbar when a node was selected. The user requested these to be removed since these actions are now handled by the hover toolbar.
 **Solution:** Removed the conditional `viz-toolbar-selection` block rendering these buttons from `src/components/Toolbar.tsx` and cleaned up unused imports and variables.
+
+## 8. Styled Palette Search Box
+
+**Issue:** The "Search blocks..." input in the blocks palette was completely unstyled, relying on browser defaults.
+**Solution:** Applied the standard `.viz-input` class to the search box in `src/components/Palette.tsx` to give it consistent styling with other inputs in the application (rounded corners, standard borders, and consistent focus states).
