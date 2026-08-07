@@ -109,8 +109,15 @@ export default function Palette({
 
         {filtered.map((group) => {
           const isOpen = searching || !!pendingSourceId || !collapsed[group.category];
+          const isListView = ['workflows', 'endpoints', 'reusable workflows'].includes(
+            group.category.toLowerCase()
+          );
+
           return (
-            <section className="viz-palette-group" key={group.category}>
+            <section
+              className={`viz-palette-group ${isListView ? 'is-list-view' : 'is-grid-view'}`}
+              key={group.category}
+            >
               <button
                 type="button"
                 className="viz-palette-group-head"

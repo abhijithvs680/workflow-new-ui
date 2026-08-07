@@ -63,3 +63,12 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 
 **Issue:** The "Search blocks..." input in the blocks palette was completely unstyled, relying on browser defaults.
 **Solution:** Applied the standard `.viz-input` class to the search box in `src/components/Palette.tsx` to give it consistent styling with other inputs in the application (rounded corners, standard borders, and consistent focus states).
+
+## 9. Palette Grid Layout and Hover Effect
+
+**Issue:** The blocks palette was originally a simple vertical list. The user requested arranging the items in a grid layout where each block is a rounded square containing an icon, and hovering over the block expands it to show the block name on a colored background.
+**Solution:**
+- Updated `.viz-palette-group ul` in `src/styles/index.css` to use `display: grid` with 5 fluid columns (`repeat(5, 1fr)`) and a 6px gap to reduce the size of the blocks.
+- Styled the block items (`.viz-palette-group li button`) as square cards (`aspect-ratio: 1`) with a slate gray background (`#64748b`) and a white icon in the center.
+- Implemented a hover effect overlay (`position: absolute`) that expands the block downwards, changes the background to the standard UI magenta (`#9d0052`), and reveals the block label underneath the icon.
+- Added conditional rendering in `src/components/Palette.tsx` to apply `.is-list-view` to "Workflows", "Endpoints", and "Reusable Workflows" categories so they retain their original vertical list styling as requested by the user, while other categories use `.is-grid-view`.

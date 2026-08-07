@@ -937,7 +937,91 @@ fieldset:disabled .viz-textarea {
   list-style: none;
 }
 
-.viz-palette-group li button {
+/* ── Grid View (Action Blocks) ── */
+
+.viz-palette-group.is-grid-view ul {
+  padding: 8px 14px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.viz-palette-group.is-grid-view li {
+  position: relative;
+  aspect-ratio: 1;
+}
+
+.viz-palette-group.is-grid-view li button {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  border: 0;
+  border-radius: 6px;
+  background: #64748b;
+  color: #ffffff;
+  cursor: grab;
+  z-index: 1;
+  transition: all 0.15s ease-out;
+}
+
+.viz-palette-group.is-grid-view li button:hover {
+  background: #9d0052;
+  height: auto;
+  min-height: 100%;
+  padding: 6px 4px;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.viz-palette-group.is-grid-view .viz-palette-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 1;
+  background: transparent;
+}
+
+.viz-palette-group.is-grid-view .viz-palette-icon img {
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.viz-palette-group.is-grid-view .viz-palette-icon em {
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.viz-palette-group.is-grid-view .viz-palette-label {
+  display: none;
+  font-size: 10.5px;
+  font-weight: 500;
+  text-align: center;
+  line-height: 1.15;
+  margin-top: 4px;
+  width: 100%;
+  word-wrap: break-word;
+}
+
+.viz-palette-group.is-grid-view li button:hover .viz-palette-label {
+  display: block;
+}
+
+/* ── List View (Workflows & Endpoints) ── */
+
+.viz-palette-group.is-list-view li button {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -951,11 +1035,11 @@ fieldset:disabled .viz-textarea {
   cursor: grab;
 }
 
-.viz-palette-group li button:hover {
+.viz-palette-group.is-list-view li button:hover {
   background: var(--primary-050);
 }
 
-.viz-palette-icon {
+.viz-palette-group.is-list-view .viz-palette-icon {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -967,20 +1051,20 @@ fieldset:disabled .viz-textarea {
   overflow: hidden;
 }
 
-.viz-palette-icon img {
+.viz-palette-group.is-list-view .viz-palette-icon img {
   width: 18px;
   height: 18px;
   object-fit: contain;
 }
 
-.viz-palette-icon em {
+.viz-palette-group.is-list-view .viz-palette-icon em {
   font-style: normal;
   font-size: 10px;
   font-weight: 700;
   color: var(--ink-500);
 }
 
-.viz-palette-label {
+.viz-palette-group.is-list-view .viz-palette-label {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
