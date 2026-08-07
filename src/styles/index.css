@@ -1033,7 +1033,7 @@ fieldset:disabled .viz-textarea {
   height: 26px;
   flex: 0 0 26px;
   border-radius: var(--radius-sm);
-  background: #f8fafc; /* Very light background, almost no color */
+  background: var(--surface-sunken);
   overflow: hidden;
 }
 
@@ -1041,7 +1041,7 @@ fieldset:disabled .viz-textarea {
   width: 16px;
   height: 16px;
   object-fit: contain;
-  opacity: 0.5; /* Fade the icon slightly to match the image's faint look */
+  filter: brightness(0) opacity(0.5);
 }
 
 .viz-palette-group.is-list-view .viz-palette-icon em {
