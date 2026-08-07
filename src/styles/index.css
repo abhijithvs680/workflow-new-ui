@@ -2296,34 +2296,32 @@ fieldset:disabled .viz-textarea {
   }
 }
 
-/* ── Settings Panel (Floating Modal) ── */
+/* ── Settings Panel (Floating Right Drawer) ── */
 .viz-settings-overlay {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(0, 0, 0, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  background: transparent;
 }
 
 .viz-settings-panel {
-  position: relative;
-  width: 380px;
-  max-width: 90vw;
-  max-height: 90vh;
+  position: fixed;
+  top: 60px;
+  right: 16px;
+  bottom: 16px;
+  width: 360px;
   background: #ffffff;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.05);
   display: flex;
   flex-direction: column;
   z-index: 1201;
-  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes popIn {
-  0% { transform: scale(0.96); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes slideInRight {
+  0% { transform: translateX(20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
 }
 
 .viz-settings-header {
