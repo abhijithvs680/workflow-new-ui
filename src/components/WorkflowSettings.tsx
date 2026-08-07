@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { errorText } from '@/api/http';
 import { settingsApi, type WorkflowVersion } from '@/api/workflow';
 import { InlineError, Spinner } from './ui/feedback';
+import Modal from './ui/Modal';
 
 interface Props {
   workflowId: string;
@@ -121,11 +122,9 @@ export default function WorkflowSettings({
                 <span className="viz-settings-section-title">Versions</span>
                 <button className="viz-btn-outline" onClick={() => setShowCreateVersion(true)}>Create</button>
               </div>
-              <div className="viz-settings-history-box">View history</div>
-              
-              {versionsBusy ? <div style={{padding: '10px 0'}}><Spinner size={16} /></div> : null}
+              <div className="viz-settings-history-box" onClick={() => void loadVersions()}>View history</div>
+              {versionsBusy ? <div style={{padding: '10px 0'}}><Spinner label="Loading..." /></div> : null}
               {versionsError ? <InlineError>{versionsError}</InlineError> : null}
-              
               <div className="viz-settings-version-list">
                 {versions.length === 0 && !versionsBusy && !versionsError ? (
                   <div style={{fontSize: '12px', color: '#6b7280', padding: '8px 0'}}>No saved versions.</div>
