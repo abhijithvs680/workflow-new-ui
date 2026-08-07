@@ -159,10 +159,6 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
       if (!requireEditing()) return;
       const node = nodesRef.current.find((n) => n.id === blockId);
       if (!node) return;
-      if (node.data.isEntry) {
-        notify('The entry block cannot be deleted.', 'error');
-        return;
-      }
       if (!window.confirm(`Delete block “${node.data.label}”?`)) return;
 
       setNodes((list) => list.filter((n) => n.id !== blockId));
@@ -177,7 +173,7 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
     async (blockId: string) => {
       if (!requireEditing()) return;
       const source = nodesRef.current.find((n) => n.id === blockId);
-      if (!source || source.data.isEntry) return;
+      if (!source) return;
 
       const position = placeNear(source);
       const newId = nextBlockId(nodesRef.current.map((n) => n.id), source.data.objId);
@@ -405,11 +401,8 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
 
   const onNodesDelete = useCallback(
     (removed: VizNode[]) => {
-      const doomed = removed.filter((n) => !n.data.isEntry);
-      if (!doomed.length) {
-        if (removed.length) notify('The entry block cannot be deleted.', 'error');
-        return;
-      }
+      const doomed = removed;
+      if (!doomed.length) return;
 
       const names = doomed.map((n) => n.data.label).join(', ');
       if (!window.confirm(`Delete ${doomed.length > 1 ? 'these blocks' : 'block'} (${names})?`)) {

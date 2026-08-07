@@ -125,24 +125,20 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
           <span>Add</span>
         </button>
       )}
-      {!isEntry && (
-        <button type="button" title="Clone block" onClick={() => onClone?.(id)}>
-          <CopyIcon />
-          <span>Clone</span>
-        </button>
-      )}
+      <button type="button" title="Clone block" onClick={() => onClone?.(id)}>
+        <CopyIcon />
+        <span>Clone</span>
+      </button>
       {isChild && (
         <button type="button" title="Open child workflow" onClick={() => onOpenChild?.(id)}>
           <ExternalIcon />
           <span>Open</span>
         </button>
       )}
-      {!isEntry && (
-        <button type="button" className="is-danger" title="Delete block" onClick={() => onDelete?.(id)}>
-          <TrashIcon />
-          <span>Delete</span>
-        </button>
-      )}
+      <button type="button" className="is-danger" title="Delete block" onClick={() => onDelete?.(id)}>
+        <TrashIcon />
+        <span>Delete</span>
+      </button>
     </div>
   ) : null;
 
