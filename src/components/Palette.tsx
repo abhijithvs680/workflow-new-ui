@@ -3,6 +3,7 @@ import type { PaletteGroup, PaletteItem } from '@/types/workflow';
 import BlockIcon from './ui/BlockIcon';
 import { BlocksIcon, ChevronIcon, CloseIcon } from './ui/icons';
 import { EmptyState } from './ui/feedback';
+import { nodeSkin } from './canvas/BlockNode';
 
 /** MIME type for the palette → canvas drag payload. */
 export const BLOCK_DND_TYPE = 'application/viz-block';
@@ -137,6 +138,7 @@ export default function Palette({
                     <li key={`${group.category}:${item.objId}:${item.objType}:${item.label}`}>
                       <button
                         type="button"
+                        className={`skin-${nodeSkin(item.objType, false, false)}`}
                         draggable
                         onDragStart={(e) => {
                           e.dataTransfer.setData(BLOCK_DND_TYPE, JSON.stringify(item));
