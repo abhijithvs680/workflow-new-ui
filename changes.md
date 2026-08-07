@@ -78,3 +78,16 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 
 ## 10. Remove Blocks button from Top bar
 
+- Removed the "Blocks" button from `src/components/Toolbar.tsx` to clean up the top navigation bar.
+
+## 11. Workflow Settings Panel Redesign
+
+- Transformed the Workflow Settings from a full-height right-side drawer into a floating modal positioned on the right side of the screen (`top: 60px; right: 16px`).
+- Removed the dark semi-transparent overlay to ensure the canvas remains fully visible when settings are open.
+- Restructured the settings layout to include a row of rounded icon tabs at the top.
+- Redesigned the "Versions" section to include a light gray "View history" box and proper alignment for timestamps, apply, and delete actions.
+- Applied clean, rounded pill shapes (`.viz-btn-outline`) for all buttons and rounded borders for inputs and selects.
+
+## 12. Palette Accordion Default State
+
+- Added logic to `Palette.tsx` to ensure that on load, only the "ACTION" category is expanded by default, while all other categories (e.g., AI AGENT BLOCKS, ENDPOINTS) start collapsed, mirroring the clean reference design.
