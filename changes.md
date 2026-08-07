@@ -42,3 +42,14 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 **Solution:**
 - Updated the `base` property in `vite.config.ts` from `APP_BASE` (which is `/workflow/debugger/`) to explicitly `/workflow/debugger/dist/`.
 - Decoupled `App.tsx` routing from Vite's `base` configuration by hardcoding `routeBase = '/workflow/debugger/'` rather than relying on `import.meta.env.BASE_URL`. This ensures routing still evaluates paths starting from the intended host path while JS and CSS static assets resolve to `dist/`.
+- Updated `vite.config.ts` to make the `base` conditional (`mode === 'development' ? APP_BASE : '/workflow/debugger/dist/'`) so the Vite dev server works correctly without throwing a base URL error.
+
+## 6. Node Actions Hover Toolbar Styling
+
+**Issue:** The user requested styling the node actions toolbar (the Edit, Add, Clone, Delete buttons that appear on hover) to match a new reference design.
+**Solution:**
+- Updated `.viz-node-actions` in `src/styles/index.css` to have a white background, rounded pill-like shape (`border-radius: 10px`), and a drop shadow. Also added a nice slide-up floating animation on hover.
+- Re-styled the action buttons within the toolbar to use a light gray background (`#f8fafc`), rounded corners (`8px`), and a slightly darker hover state (`#f1f5f9`).
+- Set a distinct light red background (`#fef2f2`) and red text (`#ef4444`) for the Delete button (class `.is-danger`), to clearly differentiate destructive actions.
+- Resized the toolbar components (smaller button paddings, tighter gaps, and slightly smaller font size) so the entire toolbar fits cleanly within the standard `220px` width of a workflow block without bleeding outside the edges.
+- Increased the vertical padding inside `.viz-node-body` to slightly increase the overall height of the block nodes as requested.
