@@ -10,6 +10,7 @@ import {
 import { errorText } from '@/api/http';
 import { PlusIcon, TrashIcon } from '../ui/icons';
 import { InlineError, Spinner } from '../ui/feedback';
+import { AutocompleteInput } from '../ui/AutocompleteInput';
 import {
   FILTER_OPERATORS,
   type Field,
@@ -170,6 +171,14 @@ function FiltersEditor({
           <option key={c} value={c} />
         ))}
       </datalist>
+
+      {/* Column / operator / value, the row ssMultiFilter.tpl renders. */}
+      <div className="viz-repeat-head is-filter">
+        <span>Filter Column</span>
+        <span />
+        <span>Filter Value</span>
+        <span />
+      </div>
 
       {rows.map((row, i) => (
         // eslint-disable-next-line react/no-array-index-key
@@ -356,7 +365,8 @@ function RowsetEditor({
   onChange: (next: Array<Record<string, string>>) => void;
   addLabel?: string;
 }) {
-  const blank = () => Object.fromEntries(columns.map((c) => [c.name, ''])) as Record<string, string>;
+  const blank = () =>
+    Object.fromEntries(columns.map((c) => [c.name, c.defaultValue ?? ''])) as Record<string, string>;
   const rows = value.length ? value : [blank()];
   const update = (i: number, name: string, next: string) =>
     onChange(rows.map((row, j) => (j === i ? { ...row, [name]: next } : row)));
@@ -375,33 +385,66 @@ function RowsetEditor({
       {rows.map((row, i) => (
         // eslint-disable-next-line react/no-array-index-key
         <div className="viz-rowset-row" key={i} style={{ gridTemplateColumns: `${template} 32px` }}>
-          {columns.map((col) =>
-            col.kind === 'select' ? (
-              <select
-                key={col.name}
-                className="viz-select"
-                aria-label={`${col.label} ${i + 1}`}
-                value={row[col.name] ?? ''}
-                onChange={(e) => update(i, col.name, e.target.value)}
-              >
-                <option value="">—</option>
-                {(col.options || []).map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <input
-                key={col.name}
-                className="viz-input"
-                aria-label={`${col.label} ${i + 1}`}
-                placeholder={col.placeholder}
-                value={row[col.name] ?? ''}
-                onChange={(e) => update(i, col.name, e.target.value)}
-              />
-            ),
-          )}
+          {columns.map((col) => {
+            const cell = row[col.name] ?? '';
+            switch (col.kind) {
+              case 'select':
+                return (
+                  <select
+                    key={col.name}
+                    className="viz-select"
+                    aria-label={`${col.label} ${i + 1}`}
+                    value={cell}
+                    onChange={(e) => update(i, col.name, e.target.value)}
+                  >
+                    {(col.options || []).some((o) => o.value === '') ? null : <option value="">—</option>}
+                    {withCurrent(col.options || [], cell).map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+                );
+              case 'checkbox': {
+                const on = col.trueValue ?? '1';
+                const off = col.falseValue ?? '0';
+                // The header row already names the column.
+                return (
+                  <label className="viz-checkbox" key={col.name}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${col.label} ${i + 1}`}
+                      checked={cell === on || cell === 'true' || cell === '1'}
+                      onChange={(e) => update(i, col.name, e.target.checked ? on : off)}
+                    />
+                  </label>
+                );
+              }
+              case 'textarea':
+                return (
+                  <textarea
+                    key={col.name}
+                    className="viz-textarea"
+                    rows={2}
+                    aria-label={`${col.label} ${i + 1}`}
+                    placeholder={col.placeholder}
+                    value={cell}
+                    onChange={(e) => update(i, col.name, e.target.value)}
+                  />
+                );
+              default:
+                return (
+                  <input
+                    key={col.name}
+                    className="viz-input"
+                    aria-label={`${col.label} ${i + 1}`}
+                    placeholder={col.placeholder}
+                    value={cell}
+                    onChange={(e) => update(i, col.name, e.target.value)}
+                  />
+                );
+            }
+          })}
           <button
             type="button"
             className="viz-icon-btn"
@@ -669,19 +712,32 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
         </Row>
       );
 
-    default:
+    default: {
+      const type = field.kind === 'number' ? 'number' : field.kind === 'email' ? 'email' : 'text';
       return (
         <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
-          <input
-            id={id}
-            type={field.kind === 'number' ? 'number' : field.kind === 'email' ? 'email' : 'text'}
-            className={`viz-input${field.monospace ? ' is-mono' : ''}`}
-            placeholder={field.placeholder}
-            value={String(value ?? '')}
-            onChange={(e) => set(e.target.value)}
-          />
+          {type === 'text' ? (
+            <AutocompleteInput
+              id={id}
+              type={type}
+              className={`viz-input${field.monospace ? ' is-mono' : ''}`}
+              placeholder={field.placeholder}
+              value={String(value ?? '')}
+              onValueChange={set}
+            />
+          ) : (
+            <input
+              id={id}
+              type={type}
+              className={`viz-input${field.monospace ? ' is-mono' : ''}`}
+              placeholder={field.placeholder}
+              value={String(value ?? '')}
+              onChange={(e) => set(e.target.value)}
+            />
+          )}
         </Row>
       );
+    }
   }
 }
 

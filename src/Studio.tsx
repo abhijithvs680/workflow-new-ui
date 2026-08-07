@@ -21,6 +21,7 @@ import { errorText, platformMessages, platformSaveOk } from './api/http';
 import { reloadGraph } from './api/bootstrap';
 import { session } from './api/session';
 import { workflowApi } from './api/workflow';
+import { AutoSuggestionProvider } from './contexts/AutoSuggestionContext';
 import type { BootData, DebugData, PaletteItem, SessionConnection } from './types/workflow';
 import {
   EDGE_COLORS,
@@ -81,8 +82,17 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
   );
 
   const [workflowName, setWorkflowName] = useState(boot.workflowName);
+  const [autoSuggestions, setAutoSuggestions] = useState<string[]>([]);
+  
   // The classic canvas opens read-only; Edit is what reveals Save.
-  const [editing, setEditing] = useState(false);
+  // A saved version has no editable state at all — there is nothing to save it
+  // back to — so `editing` can never leave `false` there.
+  const isVersion = !!boot.version;
+  const [editing, setEditingState] = useState(false);
+  const setEditing = useCallback(
+    (next: boolean) => setEditingState(isVersion ? false : next),
+    [isVersion],
+  );
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -90,6 +100,9 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [runOpen, setRunOpen] = useState(false);
   const [settingsFor, setSettingsFor] = useState<string | null>(null);
+  // Classic's "Show descriptions on all stencil blocks" toggle — a pure
+  // client-side view option, not persisted server-side there either.
+  const [showBlockInfo, setShowBlockInfo] = useState(false);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
@@ -213,7 +226,8 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
         notify('This block has no child workflow linked yet. Configure it first.', 'error');
         return;
       }
-      window.open(`#/${encodeURIComponent(childId)}`, '_blank', 'noopener');
+      // History routing: the child opens at the app's own path, not a hash.
+      window.open(`/workflow/debugger/${encodeURIComponent(childId)}`, '_blank', 'noopener');
     },
     [notify],
   );
@@ -259,6 +273,7 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
           debugDimmed: dimmed,
           debugActive: logOpen && !dimmed && selected === n.id && executed,
           hasOutgoing: outgoing.has(n.id),
+          showDescription: showBlockInfo,
           onEdit: dimmed ? undefined : openSettings,
           onDelete: dimmed ? undefined : deleteNode,
           onClone: dimmed ? undefined : cloneNode,
@@ -267,7 +282,7 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
         },
       };
     });
-  }, [nodes, edges, run, selected, editing, pendingSourceId, openSettings, deleteNode, cloneNode, addNext, openChild]);
+  }, [nodes, edges, run, selected, editing, pendingSourceId, showBlockInfo, openSettings, deleteNode, cloneNode, addNext, openChild]);
 
   const deleteEdge = useCallback(
     (edgeId: string) => {
@@ -589,7 +604,25 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
   const onStartEdit = useCallback(() => {
     setEditing(true);
     notify('Editing unlocked. Remember to save when you are done.');
-  }, [notify]);
+    
+    // Fetch auto-suggestions for block fields
+    workflowApi
+      .getAutoSuggestions(workflowId)
+      .then((res) => {
+        const flat: string[] = [];
+        res.forEach((obj) => {
+          Object.entries(obj).forEach(([blockName, fields]) => {
+            fields.forEach((field) => {
+              flat.push(`{${blockName}.${field}}`);
+            });
+          });
+        });
+        setAutoSuggestions(flat);
+      })
+      .catch((e) => {
+        console.error('Failed to load auto suggestions:', e);
+      });
+  }, [notify, workflowId]);
 
   const onFinishEdit = useCallback(async () => {
     if (!(await onSave())) return;
@@ -843,7 +876,6 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
 
   const settingsNode = settingsFor ? nodes.find((n) => n.id === settingsFor) : null;
   const incomingEdge = settingsFor ? edges.find((e) => e.target === settingsFor) : undefined;
-  const entryId = nodes.find((n) => n.data.isEntry)?.id;
 
   const shellClasses = [
     'viz-studio',
@@ -855,183 +887,181 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
     .join(' ');
 
   return (
-    <div className={shellClasses}>
-      <Toolbar
-        name={workflowName}
-        onNameChange={setWorkflowName}
-        workflowId={workflowId}
-        shortCode={shortCode}
-        dirty={dirty}
-        busy={busy}
-        editing={editing}
-        settingsOpen={settingsOpen}
-        hasSelection={!!selected && selected !== entryId}
-        hasEdgeSelection={!!selectedEdge}
-        activeLogId={activeLogId}
-        canvasInteraction={canvasInteraction}
-        onSave={() => void onSave()}
-        onStartEdit={onStartEdit}
-        onFinishEdit={() => void onFinishEdit()}
-        onRun={() => setRunOpen(true)}
-        onOpenLog={(id) => void openLog(id)}
-        onAutoLayout={() => void onAutoLayout()}
-        onFit={() => fitView({ padding: 0.2, duration: 300 })}
-        onTogglePalette={() => {
-          if (!requireEditing()) return;
-          setPaletteOpen((v) => !v);
-        }}
-        onToggleSettings={() => setSettingsOpen((v) => !v)}
-        onDeleteSelected={() => selected && void deleteNode(selected)}
-        onDisconnectSelected={() => selectedEdge && deleteEdge(selectedEdge)}
-        onEditSelected={() => selected && openSettings(selected)}
-        onCloneSelected={() => selected && void cloneNode(selected)}
-      />
-
-      <div className="viz-studio-main">
-        <div
-          className="viz-canvas"
-          ref={wrapper}
-          onDrop={onDrop}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-          }}
-        >
-          <ReactFlow
-            nodes={decoratedNodes}
-            edges={decoratedEdges}
-            nodeTypes={nodeTypes}
-            edgeTypes={edgeTypes}
-            connectionLineType={ConnectionLineType.SmoothStep}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onNodesDelete={onNodesDelete}
-            onEdgesDelete={onEdgesDelete}
-            onConnect={onConnect}
-            onNodeDragStart={onNodeDragStart}
-            onNodeDragStop={onNodeDragStop}
-            onNodeClick={(_e, node) => {
-              if (run && !node.data?.debug) return;
-              setCanvasInteraction((v) => v + 1);
-              selectBlock(node.id);
-            }}
-            onNodeDoubleClick={(_e, node) => {
-              if (run && !node.data?.debug) return;
-              openSettings(node.id);
-            }}
-            onEdgeClick={(_e, edge) => {
-              if (run && !edge.data?.runTaken) return;
-              setCanvasInteraction((v) => v + 1);
-              setSelectedEdge(edge.id);
-              setSelected(null);
-            }}
-            onPaneClick={() => {
-              setCanvasInteraction((v) => v + 1);
-              // Keep the log-focused block selected while results are open.
-              if (!run) selectBlock(null);
-              setSelectedEdge(null);
-            }}
-            nodesDraggable={editing && !run}
-            nodesConnectable={editing && !run}
-            connectOnClick
-            elementsSelectable
-            zoomOnDoubleClick={false}
-            deleteKeyCode={editing && !run ? ['Backspace', 'Delete'] : null}
-            multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
-            connectionRadius={48}
-            // Classic positions are exact pixels; a snap grid would shift them.
-            snapToGrid={false}
-            minZoom={0.2}
-            maxZoom={1.8}
-            fitView
-            fitViewOptions={{ padding: 0.18, maxZoom: 1.2 }}
-            proOptions={{ hideAttribution: true }}
-          >
-            <Background gap={22} size={1.2} color="#d5dbe5" variant={BackgroundVariant.Dots} />
-            <Controls showInteractive={false} position="bottom-right" />
-            <MiniMap
-              pannable
-              zoomable
-              position="bottom-left"
-              nodeColor={(n) =>
-                MINIMAP_COLORS[
-                  nodeSkin(n.data?.blockType || '', !!n.data?.isEntry, !!n.data?.isCondition)
-                ] || MINIMAP_COLORS.task
-              }
-            />
-          </ReactFlow>
-
-          {nodes.length === 0 ? (
-            <div className="viz-canvas-hint">
-              <p>This workflow has no blocks yet.</p>
-              {editing ? (
-                <button type="button" className="viz-btn is-primary" onClick={() => setPaletteOpen(true)}>
-                  Open blocks
-                </button>
-              ) : (
-                <button type="button" className="viz-btn is-primary" onClick={onStartEdit}>
-                  Start editing
-                </button>
-              )}
-            </div>
-          ) : null}
-        </div>
-
-        <Palette
-          groups={boot.palette}
-          open={paletteOpen && editing}
-          onToggle={() => {
-            if (!requireEditing()) return;
-            setPaletteOpen((v) => !v);
-          }}
-          onAdd={onPaletteAdd}
-          pendingSourceId={pendingSourceId}
-          onCancelPending={() => setPendingSourceId(null)}
-        />
-      </div>
-
-      <DebugPanel run={run} selectedBlockId={selected} onSelectBlock={selectBlock} onClose={clearRun} />
-
-      {runOpen ? <RunDialog onRun={(p) => void onRun(p)} onCancel={() => setRunOpen(false)} busy={busy} /> : null}
-
-      {settingsOpen ? (
-        <WorkflowSettings
+    <AutoSuggestionProvider suggestions={autoSuggestions}>
+      <div className={shellClasses}>
+        <Toolbar
+          name={workflowName}
+          onNameChange={setWorkflowName}
           workflowId={workflowId}
           shortCode={shortCode}
-          onClose={() => setSettingsOpen(false)}
-          onVersionApplied={() => {
-            setSettingsOpen(false);
-            void refreshGraph();
-            onReloadRequested();
-          }}
-          notify={notify}
+          dirty={dirty}
+          busy={busy}
+          editing={editing}
+          settingsOpen={settingsOpen}
+          hasEdgeSelection={!!selectedEdge}
+          activeLogId={activeLogId}
+          canvasInteraction={canvasInteraction}
+          version={boot.version}
+          onSave={() => void onSave()}
+          onStartEdit={onStartEdit}
+          onFinishEdit={() => void onFinishEdit()}
+          onRun={() => setRunOpen(true)}
+          onOpenLog={(id) => void openLog(id)}
+          onAutoLayout={() => void onAutoLayout()}
+          onFit={() => fitView({ padding: 0.2, duration: 300 })}
+          onToggleSettings={() => setSettingsOpen((v) => !v)}
+          onDisconnectSelected={() => selectedEdge && deleteEdge(selectedEdge)}
         />
-      ) : null}
 
-      {settingsNode ? (
-        <BlockSettingsDialog
-          workflowId={workflowId}
-          node={settingsNode}
-          incomingSourceId={incomingEdge?.source}
-          incomingProperties={incomingEdge ? connectionProps.get(incomingEdge.id) : undefined}
-          readOnly={!editing}
-          onClose={() => setSettingsFor(null)}
-          onSaved={({ label, description }) => {
-            setNodes((list) =>
-              list.map((n) =>
-                n.id === settingsNode.id
-                  ? { ...n, data: { ...n.data, label, description, configured: true } }
-                  : n,
-              ),
-            );
-            setDirty(true);
-          }}
-          notify={notify}
-        />
-      ) : null}
+        <div className="viz-studio-main">
+          <div
+            className="viz-canvas"
+            ref={wrapper}
+            onDrop={onDrop}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.dataTransfer.dropEffect = 'copy';
+            }}
+          >
+            <ReactFlow
+              nodes={decoratedNodes}
+              edges={decoratedEdges}
+              nodeTypes={nodeTypes}
+              edgeTypes={edgeTypes}
+              connectionLineType={ConnectionLineType.SmoothStep}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodesDelete={onNodesDelete}
+              onEdgesDelete={onEdgesDelete}
+              onConnect={onConnect}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDragStop={onNodeDragStop}
+              onNodeClick={(_e, node) => {
+                if (run && !node.data?.debug) return;
+                setCanvasInteraction((v) => v + 1);
+                selectBlock(node.id);
+              }}
+              onNodeDoubleClick={(_e, node) => {
+                if (run && !node.data?.debug) return;
+                openSettings(node.id);
+              }}
+              onEdgeClick={(_e, edge) => {
+                if (run && !edge.data?.runTaken) return;
+                setCanvasInteraction((v) => v + 1);
+                setSelectedEdge(edge.id);
+                setSelected(null);
+              }}
+              onPaneClick={() => {
+                setCanvasInteraction((v) => v + 1);
+                // Keep the log-focused block selected while results are open.
+                if (!run) selectBlock(null);
+                setSelectedEdge(null);
+              }}
+              nodesDraggable={editing && !run}
+              nodesConnectable={editing && !run}
+              connectOnClick
+              elementsSelectable
+              zoomOnDoubleClick={false}
+              deleteKeyCode={editing && !run ? ['Backspace', 'Delete'] : null}
+              multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
+              connectionRadius={48}
+              // Classic positions are exact pixels; a snap grid would shift them.
+              snapToGrid={false}
+              minZoom={0.2}
+              maxZoom={1.8}
+              fitView
+              fitViewOptions={{ padding: 0.18, maxZoom: 1.2 }}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background gap={22} size={1.2} color="#d5dbe5" variant={BackgroundVariant.Dots} />
+              <Controls showInteractive={false} position="bottom-right" />
+              <MiniMap
+                pannable
+                zoomable
+                position="bottom-left"
+                nodeColor={(n) =>
+                  MINIMAP_COLORS[
+                    nodeSkin(n.data?.blockType || '', !!n.data?.isEntry, !!n.data?.isCondition)
+                  ] || MINIMAP_COLORS.task
+                }
+              />
+            </ReactFlow>
 
-      <ToastStack toasts={toasts} onDismiss={dismiss} />
-    </div>
+            {nodes.length === 0 ? (
+              <div className="viz-canvas-hint">
+                <p>This workflow has no blocks yet.</p>
+                {editing ? (
+                  <button type="button" className="viz-btn is-primary" onClick={() => setPaletteOpen(true)}>
+                    Open blocks
+                  </button>
+                ) : (
+                  <button type="button" className="viz-btn is-primary" onClick={onStartEdit}>
+                    Start editing
+                  </button>
+                )}
+              </div>
+            ) : null}
+          </div>
+
+          <Palette
+            groups={boot.palette}
+            open={paletteOpen && editing}
+            onToggle={() => {
+              if (!requireEditing()) return;
+              setPaletteOpen((v) => !v);
+            }}
+            onAdd={onPaletteAdd}
+            pendingSourceId={pendingSourceId}
+            onCancelPending={() => setPendingSourceId(null)}
+          />
+        </div>
+
+        <DebugPanel run={run} selectedBlockId={selected} onSelectBlock={selectBlock} onClose={clearRun} />
+
+        {runOpen ? <RunDialog onRun={(p) => void onRun(p)} onCancel={() => setRunOpen(false)} busy={busy} /> : null}
+
+        {settingsOpen ? (
+          <WorkflowSettings
+            workflowId={workflowId}
+            shortCode={shortCode}
+            workflowName={workflowName}
+            showBlockInfo={showBlockInfo}
+            onToggleBlockInfo={() => setShowBlockInfo((v) => !v)}
+            onClose={() => setSettingsOpen(false)}
+            onVersionApplied={() => {
+              setSettingsOpen(false);
+              void refreshGraph();
+              onReloadRequested();
+            }}
+            notify={notify}
+          />
+        ) : null}
+
+        {settingsNode ? (
+          <BlockSettingsDialog
+            workflowId={workflowId}
+            node={settingsNode}
+            incomingSourceId={incomingEdge?.source}
+            incomingProperties={incomingEdge ? connectionProps.get(incomingEdge.id) : undefined}
+            readOnly={!editing}
+            onClose={() => setSettingsFor(null)}
+            onSaved={({ label, description, block_properties }) => {
+              setNodes((list) =>
+                list.map((n) =>
+                  n.id === settingsNode.id
+                    ? { ...n, data: { ...n.data, label, description, configured: true, block_properties } }
+                    : n,
+                ),
+              );
+              setDirty(true);
+            }}
+            notify={notify}
+          />
+        ) : null}
+
+        <ToastStack toasts={toasts} onDismiss={dismiss} />
+      </div>
+    </AutoSuggestionProvider>
   );
 }
 

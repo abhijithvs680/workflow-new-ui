@@ -314,29 +314,18 @@ export async function loadWorkflow(param: string): Promise<BootData> {
 
   const { workflowId, shortCode } = shell;
 
-  const [fragmentHtml, storedHtml] = await Promise.all([
-    getHtml(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`),
-    shortCode
-      ? getHtml(`/workflow.settings/${encodeURIComponent(shortCode)}/json`).catch(() => '')
-      : Promise.resolve(''),
-  ]);
+  const reactInfoHtml = await getHtml(`/workflow.reactinfo/${encodeURIComponent(workflowId)}`);
+  let reactInfo: any = {};
+  try {
+    reactInfo = JSON.parse(reactInfoHtml);
+  } catch (e) {
+    // fallback if endpoint not deployed yet or returns error
+    reactInfo = { blocks: [], connections: [] };
+  }
+  
+  const blocks: SessionBlock[] = Array.isArray(reactInfo.blocks) ? reactInfo.blocks : [];
+  const connections: SessionConnection[] = Array.isArray(reactInfo.connections) ? reactInfo.connections : [];
 
-  const { blocks, connections } = parseCanvasFragment(fragmentHtml, workflowId);
-  const stored = storedHtml ? parseStoredProperties(storedHtml) : new Map<string, MongoWObject>();
-
-  // Merge the authoritative properties over the label/description scraped from
-  // the rendered markup, keeping the markup values as a fallback.
-  const merged = blocks.map<SessionBlock>((block) => {
-    const w = stored.get(block.blockId);
-    if (!w) return block;
-    const fromMarkup = (block.block_properties || {}) as BlockProperties;
-    return {
-      ...block,
-      short_code: block.short_code || w.short_code || '',
-      properties: w.properties || '',
-      block_properties: { ...fromMarkup, ...(w.block_properties || {}) },
-    };
-  });
 
   return {
     workflowId,
@@ -344,9 +333,48 @@ export async function loadWorkflow(param: string): Promise<BootData> {
     shortCode,
     appShortCode: shell.appShortCode,
     logId,
-    blocks: merged,
+    blocks,
     connections,
     palette: shell.palette,
+  };
+}
+
+/**
+ * Boot the canvas from a saved version.
+ *
+ * The React equivalent of `/workflow.versiondebugger/{id}`, which is the classic
+ * debugger with `Workflowversion` swapped in for `Workflow`. No shell page is
+ * fetched: a version is read-only, so it needs neither the block palette nor the
+ * session re-seed that the live canvas depends on — and skipping it keeps the
+ * viewer from touching the parent workflow's session at all.
+ */
+export async function loadWorkflowVersion(versionId: string): Promise<BootData> {
+  const raw = await getHtml(`/workflow.reactinfo/version/${encodeURIComponent(versionId)}`);
+
+  let info: Record<string, unknown>;
+  try {
+    info = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    throw new PlatformError('The saved version could not be read.');
+  }
+  if (info.error) throw new PlatformError(String(info.error));
+
+  return {
+    workflowId: String(info.workflowId || versionId),
+    workflowName: String(info.workflowName || 'Workflow version'),
+    shortCode: String(info.shortCode || ''),
+    appShortCode: '',
+    logId: '',
+    blocks: Array.isArray(info.blocks) ? (info.blocks as SessionBlock[]) : [],
+    connections: Array.isArray(info.connections) ? (info.connections as SessionConnection[]) : [],
+    palette: [],
+    version: {
+      versionId: String(info.versionId || versionId),
+      createdAt: Number(info.versionCreatedAt || 0),
+      note: String(info.versionNote || ''),
+      parentWorkflowId: String(info.parentWorkflowId || ''),
+      parentName: String(info.parentName || ''),
+    },
   };
 }
 
@@ -354,6 +382,14 @@ export async function loadWorkflow(param: string): Promise<BootData> {
 export async function reloadGraph(
   workflowId: string,
 ): Promise<{ blocks: SessionBlock[]; connections: SessionConnection[] }> {
-  const html = await getHtml(`/workflow.debugger/${encodeURIComponent(workflowId)}/isChild/`);
-  return parseCanvasFragment(html, workflowId);
+  const reactInfoHtml = await getHtml(`/workflow.reactinfo/${encodeURIComponent(workflowId)}`);
+  try {
+    const reactInfo = JSON.parse(reactInfoHtml);
+    return {
+      blocks: Array.isArray(reactInfo.blocks) ? reactInfo.blocks : [],
+      connections: Array.isArray(reactInfo.connections) ? reactInfo.connections : []
+    };
+  } catch {
+    return { blocks: [], connections: [] };
+  }
 }

@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { useCallback, useEffect, useState } from 'react';
-import { loadWorkflow } from './api/bootstrap';
+import { loadWorkflow, loadWorkflowVersion } from './api/bootstrap';
 import { clearLookupCache } from './api/lookups';
 import { errorText, PlatformError } from './api/http';
 import type { BootData } from './types/workflow';
@@ -12,15 +12,21 @@ import { FullPageError, FullPageLoader } from './components/ui/feedback';
  *
  * Reads the workflow id or short code from the URL path.
  * e.g., `/workflow/debugger/<workflowId-or-shortCode>`.
+ *
+ * A saved version is addressed with `?version=<versionId>` on that same path
+ * rather than a deeper `/version/<id>` segment: the build ships no `.htaccess`
+ * (see `scripts/deploy.mjs`), so any extra path segment would fall through to
+ * the PHP router and 404 on reload.
  */
-function readRoute(): { param: string } {
+function readRoute(): { param: string; versionId: string } {
   let path = window.location.pathname;
   const routeBase = '/workflow/debugger/';
   if (path.startsWith(routeBase)) {
     path = path.slice(routeBase.length);
   }
   path = path.replace(/^\/+/, '').replace(/\/+$/, '');
-  return { param: decodeURIComponent(path) };
+  const versionId = new URLSearchParams(window.location.search).get('version') || '';
+  return { param: decodeURIComponent(path), versionId };
 }
 
 type State =
@@ -39,15 +45,15 @@ export default function App() {
     return () => window.removeEventListener('popstate', onLocationChange);
   }, []);
 
-  const load = useCallback(async (param: string) => {
-    if (!param) {
+  const load = useCallback(async (param: string, versionId: string) => {
+    if (!param && !versionId) {
       setState({ status: 'idle' });
       return;
     }
     setState({ status: 'loading' });
     clearLookupCache();
     try {
-      const boot = await loadWorkflow(param);
+      const boot = versionId ? await loadWorkflowVersion(versionId) : await loadWorkflow(param);
       setState({ status: 'ready', boot });
       document.title = boot.workflowName ? `${boot.workflowName} · Workflow Studio` : 'Workflow Studio';
     } catch (e) {
@@ -60,8 +66,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    void load(route.param);
-  }, [route.param, load]);
+    void load(route.param, route.versionId);
+  }, [route.param, route.versionId, load]);
 
   if (state.status === 'idle') {
     return <NoWorkflowSelected />;
@@ -77,14 +83,14 @@ export default function App() {
         title="Could not open this workflow"
         message={state.message}
         detail={state.detail}
-        onRetry={() => void load(route.param)}
+        onRetry={() => void load(route.param, route.versionId)}
       />
     );
   }
 
   return (
     // Remount on workflow change so the canvas never mixes two graphs.
-    <Studio key={state.boot.workflowId} boot={state.boot} onReloadRequested={() => void load(route.param)} />
+    <Studio key={route.versionId || state.boot.workflowId} boot={state.boot} onReloadRequested={() => void load(route.param, route.versionId)} />
   );
 }
 

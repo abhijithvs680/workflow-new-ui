@@ -1,4 +1,5 @@
 import RecentLogs from './RecentLogs';
+import { formatVersionStamp } from '@/lib/versions';
 import {
   CheckIcon,
   CogIcon,
@@ -17,10 +18,20 @@ export interface ToolbarProps {
   busy: boolean;
   editing: boolean;
   settingsOpen: boolean;
-  hasSelection: boolean;
   hasEdgeSelection: boolean;
   activeLogId?: string | number;
   canvasInteraction: number;
+  /**
+   * Present when the canvas is showing a saved version. The classic
+   * `/workflow.versiondebugger/{id}` page has no edit, save or run controls, so
+   * neither does this — only a way back to the live workflow.
+   */
+  version?: {
+    createdAt: number;
+    note: string;
+    parentWorkflowId: string;
+    parentName: string;
+  };
 
   onSave: () => void;
   onStartEdit: () => void;
@@ -29,12 +40,8 @@ export interface ToolbarProps {
   onOpenLog: (logId: string | number) => void;
   onAutoLayout: () => void;
   onFit: () => void;
-  onTogglePalette: () => void;
   onToggleSettings: () => void;
-  onDeleteSelected: () => void;
   onDisconnectSelected: () => void;
-  onEditSelected: () => void;
-  onCloneSelected: () => void;
 }
 
 /**
@@ -53,7 +60,46 @@ export default function Toolbar(props: ToolbarProps) {
     hasEdgeSelection,
     activeLogId,
     canvasInteraction,
+    version,
   } = props;
+
+  if (version) {
+    return (
+      <div className="viz-toolbar is-version">
+        <div className="viz-toolbar-main">
+          <div className="viz-toolbar-identity">
+            <span className="viz-toolbar-name is-static" title={name}>
+              {version.parentName || name}
+            </span>
+            <span className="viz-pill is-info">Version</span>
+            {version.createdAt ? (
+              <span className="viz-toolbar-version-stamp">
+                {formatVersionStamp(version.createdAt)}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="viz-toolbar-edit-cluster">
+            {version.note ? <span className="viz-toolbar-version-note">{version.note}</span> : null}
+            {version.parentWorkflowId ? (
+              <a
+                className="viz-btn is-primary"
+                href={`/workflow/debugger/${encodeURIComponent(version.parentWorkflowId)}`}
+              >
+                Back to workflow
+              </a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="viz-toolbar-actions">
+          <button type="button" className="viz-btn" onClick={props.onFit} title="Fit the graph to the viewport">
+            <FitIcon /> Fit
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="viz-toolbar">

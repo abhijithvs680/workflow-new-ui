@@ -396,6 +396,12 @@ fieldset:disabled .viz-textarea {
   color: var(--danger);
 }
 
+.viz-pill.is-info {
+  background: var(--primary-050);
+  border-color: var(--primary-100);
+  color: var(--primary-700);
+}
+
 .viz-pill.is-running {
   background: var(--primary-050);
   color: var(--primary-700);
@@ -623,6 +629,37 @@ fieldset:disabled .viz-textarea {
 .viz-toolbar-name:focus {
   border-color: var(--line-strong);
   background: var(--surface);
+}
+
+/* Version canvas: the name is not editable, so it renders as plain text. */
+.viz-toolbar-name.is-static {
+  display: inline-flex;
+  align-items: center;
+  width: auto;
+  max-width: clamp(140px, 24vw, 320px);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.viz-toolbar-name.is-static:hover {
+  border-color: transparent;
+  background: transparent;
+}
+
+.viz-toolbar-version-stamp {
+  color: var(--ink-500);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.viz-toolbar-version-note {
+  max-width: 320px;
+  overflow: hidden;
+  color: var(--ink-500);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .viz-toolbar-name:disabled {
@@ -1124,10 +1161,6 @@ fieldset:disabled .viz-textarea {
   opacity: 0.3;
 }
 
-.viz-node.is-debug-active {
-  box-shadow: 0 0 0 3px var(--primary-100), var(--shadow);
-}
-
 .viz-node.is-ok {
   outline: 2px solid #86efac;
   outline-offset: 2px;
@@ -1247,6 +1280,90 @@ fieldset:disabled .viz-textarea {
   background: #64748b;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Debug-active block                                                         */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * The block whose log entry is open in the debug dock.
+ *
+ * It has to be findable at a glance on a large canvas, so it takes a solid blue
+ * fill plus a glow halo rather than the skin it would normally wear. These rules
+ * sit *after* the skin palette on purpose: `.viz-node.skin-dark .viz-node-label`
+ * and `.viz-node.is-debug-active .viz-node-label` have equal specificity, so
+ * source order is what decides which one wins.
+ */
+.viz-node.is-debug-active {
+  background: linear-gradient(180deg, #2f7bf6 0%, #1857c8 100%);
+  border-color: #0b3f9e;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 0 0 6px #2f7bf6,
+    0 0 0 14px rgb(47 123 246 / 25%),
+    0 10px 28px rgb(11 63 158 / 40%);
+  animation: viz-debug-pulse 1.1s ease-out 1;
+}
+
+.viz-node.is-debug-active .viz-node-label {
+  color: #fff;
+}
+
+.viz-node.is-debug-active .viz-node-type {
+  color: rgb(255 255 255 / 78%);
+}
+
+.viz-node.is-debug-active .viz-node-icon {
+  background: rgb(255 255 255 / 22%);
+}
+
+.viz-node.is-debug-active .viz-node-icon img {
+  filter: brightness(0) invert(1);
+}
+
+.viz-node.is-debug-active .viz-node-icon em {
+  color: #fff;
+}
+
+/* The green/red status outline would otherwise cut across the halo. */
+.viz-node.is-debug-active.is-ok,
+.viz-node.is-debug-active.is-failed {
+  outline: none;
+}
+
+/**
+ * React Flow writes `z-index` inline on every node wrapper, so a rule on the
+ * inner `.viz-node` cannot lift it — the halo would be painted under adjacent
+ * nodes and edges. The debug-active block is always React Flow-selected
+ * (`Studio.tsx`, `decoratedNodes`), so raising the selected wrapper covers it.
+ */
+.react-flow__node.selected {
+  z-index: 10 !important;
+}
+
+@keyframes viz-debug-pulse {
+  0% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 6px #2f7bf6,
+      0 0 0 6px rgb(47 123 246 / 50%),
+      0 10px 28px rgb(11 63 158 / 40%);
+  }
+  60% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 6px #2f7bf6,
+      0 0 0 24px rgb(47 123 246 / 0%),
+      0 10px 28px rgb(11 63 158 / 40%);
+  }
+  100% {
+    box-shadow:
+      0 0 0 3px #fff,
+      0 0 0 6px #2f7bf6,
+      0 0 0 14px rgb(47 123 246 / 25%),
+      0 10px 28px rgb(11 63 158 / 40%);
+  }
+}
+
 .viz-node-body {
   position: relative;
   z-index: 1;
@@ -1307,6 +1424,24 @@ fieldset:disabled .viz-textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/** Settings drawer's "show block descriptions" toggle. */
+.viz-node-desc {
+  margin-top: 2px;
+  color: var(--ink-500);
+  font-size: 10.5px;
+  font-style: italic;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.viz-node.skin-dark .viz-node-desc,
+.viz-node.skin-output .viz-node-desc {
+  color: #94a3b8;
 }
 
 .viz-node-time {
@@ -1764,10 +1899,13 @@ fieldset:disabled .viz-textarea {
   background: rgb(255 255 255 / 6%);
 }
 
+/* Pairs with `.viz-node.is-debug-active` on the canvas — the dark dock needs a
+   far lighter blue than `--primary-400` to register against `--ink-900`. */
 .viz-debug-blocks li.is-active button {
-  background: rgb(255 255 255 / 11%);
+  background: rgb(91 157 255 / 16%);
   color: #fff;
-  box-shadow: inset 2px 0 0 var(--primary-400);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 #5b9dff;
 }
 
 .viz-dot {
@@ -1847,6 +1985,22 @@ fieldset:disabled .viz-textarea {
   color: #b9c0cc;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Standalone (the Settings > workflow JSON modal). The debug-dock rule below is
+   more specific, so it still wins inside the dock. */
+.viz-json-plain {
+  margin: 0;
+  padding: 12px;
+  max-height: 60vh;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .viz-debug-fold .viz-json,
@@ -1978,12 +2132,6 @@ fieldset:disabled .viz-textarea {
   padding: 12px 20px;
   border-top: 1px solid var(--line);
   background: var(--surface-sunken);
-}
-
-.viz-modal-foot-note {
-  margin-right: auto;
-  color: var(--ink-500);
-  font-size: 12px;
 }
 
 .viz-modal-veil {
@@ -2158,6 +2306,47 @@ fieldset:disabled .viz-textarea {
   text-align: center;
 }
 
+/* Connection mapping — the Source ⇄ Target table from executeaction.tpl,
+   and the fixed label/value rows from sendmail.tpl. */
+.viz-map {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.viz-map-head,
+.viz-map-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 24px minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz-map-head {
+  color: var(--ink-500);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.viz-map-sep {
+  color: var(--ink-400);
+  text-align: center;
+}
+
+.viz-map-fixed-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+}
+
+.viz-map-fixed-label {
+  padding-top: 7px;
+  color: var(--ink-700);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
 .viz-kv-grid {
   display: flex;
   flex-direction: column;
@@ -2296,211 +2485,237 @@ fieldset:disabled .viz-textarea {
   }
 }
 
-/* ── Settings Panel (Floating Right Drawer) ── */
-.viz-settings-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 1200;
-  background: transparent;
-}
+/* -------------------------------------------------------------------------- */
+/* Settings modal                                                             */
+/* -------------------------------------------------------------------------- */
 
-.viz-settings-panel {
-  position: fixed;
-  top: 60px;
-  right: 16px;
-  bottom: 16px;
-  width: 360px;
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0,0,0,0.05);
+.viz-settings {
   display: flex;
   flex-direction: column;
-  z-index: 1201;
-  animation: slideInRight 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  gap: 16px;
+  padding-bottom: 4px;
 }
 
-@keyframes slideInRight {
-  0% { transform: translateX(20px); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
-}
-
-.viz-settings-header {
+/* Action box: log / schedule / block-info / view-json, as icon tiles. */
+.viz-settings-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 20px 24px 16px;
-  border-bottom: 1px solid var(--line-light, #f3f4f6);
+  gap: 8px;
 }
 
-.viz-settings-header h3 {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 0;
-  color: var(--ink-900, #111);
-}
-
-.viz-settings-subtitle {
-  font-size: 13px;
-  color: var(--ink-400, #9ca3af);
-  margin-top: 2px;
-  display: block;
-}
-
-.viz-settings-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: var(--ink-500, #6b7280);
-  padding: 0 4px;
-  line-height: 1;
-}
-
-.viz-settings-close:hover {
-  color: var(--ink-900, #111);
-}
-
-.viz-settings-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px;
-}
-
-.viz-settings-tabs {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.viz-settings-tab {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--line, #e5e7eb);
-  background: #ffffff;
+.viz-settings-action {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink-600);
+  font-weight: 700;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
   cursor: pointer;
-  color: var(--ink-700, #374151);
-  transition: all 0.1s ease;
+  text-decoration: none;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.viz-settings-tab:hover {
-  background: var(--surface-sunken, #f9fafb);
+.viz-settings-action svg {
+  width: 14px;
+  height: 14px;
 }
 
-.viz-settings-tab.is-active {
-  background: #0b57d0;
-  border-color: #0b57d0;
-  color: #ffffff;
+.viz-settings-action:hover {
+  border-color: var(--ink-400);
+  color: var(--ink-900);
+}
+
+.viz-settings-action.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.viz-settings-schedule {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+}
+
+.viz-radio-group.is-stacked {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.viz-radio-group.is-stacked .viz-radio {
+  width: 100%;
+  justify-content: space-between;
+}
+
+.viz-radio-group.is-stacked .viz-radio > span {
+  flex: 1 1 auto;
+}
+
+.viz-settings-schedule .viz-select.is-sm {
+  width: auto;
+  flex: 0 0 auto;
 }
 
 .viz-settings-section {
-  padding-bottom: 24px;
-  margin-bottom: 20px;
-  border-bottom: 1px solid var(--line-light, #f3f4f6);
-}
-
-.viz-settings-section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-}
-
-.viz-settings-section-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--ink-900, #111);
-}
-
-.viz-btn-outline {
-  padding: 6px 14px;
-  border: 1px solid #0b57d0;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #0b57d0;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.viz-btn-outline:hover {
-  background: #eff6ff;
-}
-
-.viz-settings-history-box {
-  background: #f1f5f9;
-  padding: 10px 14px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: var(--ink-700, #374151);
-  margin-bottom: 16px;
-  cursor: pointer;
-}
-
-.viz-settings-version-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
-.viz-settings-version-item {
+.viz-settings-section-head {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  align-items: flex-start;
-  font-size: 13px;
+  gap: 10px;
 }
 
-.viz-settings-version-date {
-  color: #0b57d0;
-  font-size: 13px;
-  margin-bottom: 2px;
+.viz-settings-title {
+  font-weight: 700;
+  color: var(--ink-900);
+  font-size: 14px;
 }
 
-.viz-settings-version-note {
-  color: var(--ink-500, #6b7280);
-  font-size: 12px;
-}
-
-.viz-settings-version-actions {
-  display: flex;
-  gap: 12px;
-  font-size: 13px;
-}
-
-.viz-settings-version-actions a {
-  color: #0b57d0;
-  cursor: pointer;
-}
-
-.viz-settings-version-actions a:hover {
-  text-decoration: underline;
-}
-
-.viz-settings-version-actions a.is-danger {
-  color: #ef4444;
+.viz-settings-rule {
+  margin: 2px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
 }
 
 .viz-settings-row {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  gap: 8px;
 }
 
-.viz-input-rounded,
-.viz-select-rounded {
-  flex: 1;
-  padding: 8px 12px;
+.viz-settings-reusable-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Rounded pill variants, matching the classic action buttons. */
+.viz-btn.is-outline {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--surface);
+}
+
+.viz-btn.is-outline:hover:not(:disabled) {
+  background: var(--primary-050);
+  border-color: var(--primary-600);
+}
+
+.viz-btn.is-rounded {
+  border-radius: 999px;
+}
+
+.viz-input.is-rounded,
+.viz-select.is-rounded {
+  border-radius: 999px;
+  padding-left: 14px;
+}
+
+.viz-link-btn.is-danger {
+  color: var(--danger);
+}
+
+/* Version history --------------------------------------------------------- */
+
+.viz-settings-history-label {
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  color: var(--ink-600);
+  font-weight: 600;
+  font-size: 12.5px;
+}
+
+.viz-settings-versions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.viz-settings-version-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* An anchor since it opens the version canvas, as the classic panel does. */
+.viz-settings-version-date {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 12.5px;
+  text-decoration: none;
+}
+
+a.viz-settings-version-date:hover,
+a.viz-settings-version-date:focus-visible {
+  text-decoration: underline;
+}
+
+.viz-settings-version-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+}
+
+.viz-settings-version-note {
+  margin-top: 2px;
+  color: var(--ink-500);
+  font-size: 12px;
+}
+
+/* Reusable field editor ---------------------------------------------------- */
+
+.viz-repeat-row.is-reusable-field {
+  grid-template-columns: minmax(0, 1.4fr) 70px minmax(0, 1.4fr) 28px;
+}
+
+.viz-checkbox.is-center {
+  justify-content: center;
+}
+
+/* ── Autocomplete Dropdown ── */
+.viz-autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  background: #ffffff;
   border: 1px solid var(--line, #e5e7eb);
   border-radius: 8px;
-  font-size: 13px;
-  outline: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  list-style: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1050;
 }
 
-.viz-input-rounded:focus,
-.viz-select-rounded:focus {
-  border-color: #0b57d0;
+.viz-autocomplete-dropdown li {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--ink-800, #1f2937);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.viz-autocomplete-dropdown li:hover,
+.viz-autocomplete-dropdown li.is-active {
+  background: #eff6ff;
+  color: #0b57d0;
 }

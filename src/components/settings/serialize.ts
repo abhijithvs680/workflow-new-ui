@@ -35,10 +35,6 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
-export function emptyRow(names: string[]): Record<string, string> {
-  return Object.fromEntries(names.map((n) => [n, '']));
-}
-
 /* -------------------------------------------------------------------------- */
 /* Hydrate                                                                    */
 /* -------------------------------------------------------------------------- */
@@ -122,7 +118,9 @@ function hydrateField(field: Field, props: BlockProperties, defaults: Values): u
         });
         return out;
       });
-      return rows.length ? rows : [emptyRow(field.columns.map((c) => c.name))];
+      return rows.length
+        ? rows
+        : [Object.fromEntries(field.columns.map((c) => [c.name, c.defaultValue ?? '']))];
     }
 
     case 'note':

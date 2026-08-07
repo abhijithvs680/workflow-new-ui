@@ -72,6 +72,19 @@ export interface BootData {
   palette: PaletteGroup[];
   /** App short code the workflow is tagged to; drives palette scoping. */
   appShortCode: string;
+  /**
+   * Set when the canvas is showing a saved version rather than the live
+   * workflow. The classic `/workflow.versiondebugger/{id}` page is read-only,
+   * so this locks editing and reveals the "back to workflow" link.
+   */
+  version?: {
+    versionId: string;
+    createdAt: number;
+    note: string;
+    /** Empty when the parent workflow has since been deleted. */
+    parentWorkflowId: string;
+    parentName: string;
+  };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,6 +108,8 @@ export interface BlockNodeData {
   configured: boolean;
   shortcode?: string;
   reusable?: boolean;
+  block_properties?: BlockProperties;
+  properties?: Record<string, unknown>;
 
   /* Run/debug overlay */
   debug?: { status: RunStatus; executionTime?: string };
@@ -104,6 +119,8 @@ export interface BlockNodeData {
   /* Interaction state, injected by the canvas */
   pendingSource?: boolean;
   hasOutgoing?: boolean;
+  /** Settings drawer's "show block descriptions" toggle (session-only). */
+  showDescription?: boolean;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onClone?: (id: string) => void;
@@ -118,6 +135,7 @@ export interface VizEdgeData {
   /** True when the last run traversed this connection. */
   runTaken?: boolean;
   debugDimmed?: boolean;
+  properties?: Record<string, unknown>;
   onDelete?: (id: string) => void;
 }
 

@@ -81,12 +81,30 @@ export interface RowsetColumn {
   /** Posted as `name[]`. */
   name: string;
   label: string;
-  kind?: 'text' | 'select';
+  kind?: 'text' | 'select' | 'checkbox' | 'textarea';
   options?: Option[];
   placeholder?: string;
   /** Relative column width inside the row grid. */
   grow?: number;
+  /** `checkbox` only — what is posted when ticked / cleared. */
+  trueValue?: string;
+  falseValue?: string;
+  /** Value a freshly added row starts with. */
+  defaultValue?: string;
 }
+
+/**
+ * Which layout template `Customblockpopup::$templateArray` pairs the block with.
+ * It decides the dialog's tab strip and where Label and Description sit — see
+ * `blockComponents/blockSettings.tpl` and `tabbedBlockSettings.tpl`.
+ *
+ *   `tabbed`    Block Settings · Connection Mapping · Notes.
+ *               Block Settings runs Label → fields → Description.
+ *   `untabbed`  No tabs at all. Label → Description → divider → fields.
+ *   `plain`     No tabs and no Description — the Date, Math and String
+ *               processors, whose layouts render Label plus their row set only.
+ */
+export type BlockLayout = 'tabbed' | 'untabbed' | 'plain';
 
 export interface FieldGroup {
   /** Omit for the default ungrouped section. */
@@ -100,10 +118,15 @@ export interface BlockSchema {
   title: string;
   /** One-line explanation of what the block does. */
   summary?: string;
+  /** Mirrors the layout template the classic dialog pairs this block with. */
+  layout: BlockLayout;
   groups: FieldGroup[];
   /** Values applied when a property is absent (i.e. a freshly added block). */
   defaults?: Values;
-  /** Offer the Connection Mapping tab (targets that map upstream fields in). */
+  /**
+   * True for `layout: 'tabbed'`, which is the only layout carrying a
+   * Connection Mapping tab. Derived from `layout`; never set by hand.
+   */
   connectionMapping?: boolean;
   /**
    * Extra fields appended at save time — the legacy forms add several of these

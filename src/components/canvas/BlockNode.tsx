@@ -209,6 +209,9 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
         <span className="viz-node-text">
           <span className="viz-node-label">{label}</span>
           <span className="viz-node-type">{displayName || blockType}</span>
+          {data.showDescription && description ? (
+            <span className="viz-node-desc">{description}</span>
+          ) : null}
         </span>
         {notConfigured}
         {data.debug?.executionTime ? (

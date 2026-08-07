@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { errorText, type FormValue } from '@/api/http';
 import { session } from '@/api/session';
-import { fetchBlockProperties } from '@/api/workflow';
+import type { ConnectionMappingDetails } from '@/api/workflow';
 import type { BlockNodeData, BlockProperties } from '@/types/workflow';
 import Modal from '../ui/Modal';
 import { FullPageError, InlineError, Spinner } from '../ui/feedback';
 import FieldRenderer, { useSpreadsheetColumns } from './fields';
-import { schemaFor, UNPORTED_BLOCKS } from './registry';
+import { layoutFor, schemaFor, UNPORTED_BLOCKS } from './registry';
 import { hydrate, isVisible, serialize } from './serialize';
-import type { BlockSchema, Values } from './schema';
-import ConnectionMappingEditor, { type MappingRow, mappingToPayload, mappingFromProperties } from './ConnectionMappingEditor';
+import type { BlockLayout, BlockSchema, Values } from './schema';
+import ConnectionMappingEditor, {
+  type MappingRow,
+  isSendmailMapping,
+  mappingToPayload,
+  mappingFromProperties,
+  sendmailMappingToPayload,
+} from './ConnectionMappingEditor';
 
 /**
  * Properties the platform injects for display and re-derives on every save.
@@ -48,7 +54,7 @@ export interface BlockSettingsDialogProps {
   readOnly: boolean;
   onClose: () => void;
   /** Fired after a successful save so the canvas can refresh the node. */
-  onSaved: (patch: { label: string; description: string }) => void;
+  onSaved: (patch: { label: string; description: string; block_properties: BlockProperties }) => void;
   notify: (text: string, kind?: 'info' | 'success' | 'error') => void;
 }
 
@@ -65,6 +71,8 @@ export default function BlockSettingsDialog({
   const blockType = node.data.blockType;
   const schema = useMemo<BlockSchema | null>(() => schemaFor(blockType), [blockType]);
   const unportedNote = UNPORTED_BLOCKS[blockType];
+  /** Which of the classic layout templates this block would have been rendered with. */
+  const layout: BlockLayout = useMemo(() => layoutFor(blockType), [blockType]);
 
   const [tab, setTab] = useState<Tab>('settings');
   const [loading, setLoading] = useState(true);
@@ -79,6 +87,13 @@ export default function BlockSettingsDialog({
   const [rawJson, setRawJson] = useState('{}');
   const [rawError, setRawError] = useState('');
   const [mapping, setMapping] = useState<MappingRow[]>([]);
+  const [mappingDetails, setMappingDetails] = useState<ConnectionMappingDetails | null>(null);
+  /**
+   * The connection is only written when the mapping was actually put in front of
+   * the user, or already carries values. Saving from the Settings tab alone must
+   * not stamp an empty `field-mapping` onto a connection that had none.
+   */
+  const [mappingOpened, setMappingOpened] = useState(false);
 
   /* ---- load ---- */
 
@@ -86,13 +101,20 @@ export default function BlockSettingsDialog({
     setLoading(true);
     setLoadError('');
     try {
-      const props = await fetchBlockProperties(workflowId, node.id);
+      const props = (node.data.block_properties || {}) as BlockProperties;
       setStored(props);
       setValues(schema ? hydrate(schema, props) : {});
       setLabel(String(props.label || node.data.label || ''));
       setDescription(String(props.description || node.data.description || ''));
       setRawJson(JSON.stringify(stripTransient(props), null, 2));
-      setMapping(mappingFromProperties(incomingProperties));
+      // `field-mapping` is written to both the connection and the target block,
+      // but only the block's copy survives a save — Save.php drops connection
+      // `properties` on the way to Mongo. Prefer the block, and keep the
+      // connection as the fallback for a mapping still only in this session.
+      const nodeProps = node.data.properties as Record<string, unknown> | undefined;
+      const fromBlock = mappingFromProperties(nodeProps);
+      const hasBlockMapping = fromBlock.some((r) => r.left || r.right);
+      setMapping(hasBlockMapping ? fromBlock : mappingFromProperties(incomingProperties));
     } catch (e) {
       setLoadError(errorText(e, 'Could not read this block’s settings.'));
     } finally {
@@ -115,13 +137,48 @@ export default function BlockSettingsDialog({
   const sheetId = String(values.s_master_ssid || values.ssid || '');
   const columns = useSpreadsheetColumns(sheetId);
 
-  const canMap = !!schema?.connectionMapping && !!incomingSourceId;
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: 'settings', label: 'Settings' },
-    ...(canMap ? ([{ id: 'mapping', label: 'Connection mapping' }] as const) : []),
-    { id: 'notes', label: 'Notes' },
-    { id: 'advanced', label: 'Advanced' },
-  ];
+  /**
+   * `tabbedBlockSettings.tpl` is the only layout with a tab strip, and it always
+   * carries all three tabs. Advanced is ours: it is the only way to reach the
+   * properties of a block whose editor is not ported, so it is offered exactly
+   * for those blocks rather than for every one.
+   */
+  const canMap = layout === 'tabbed';
+  const needsAdvanced = !schema || !!unportedNote;
+
+  const tabs: Array<{ id: Tab; label: string }> = useMemo(() => {
+    const list: Array<{ id: Tab; label: string }> = [];
+    if (layout === 'tabbed') {
+      list.push({ id: 'settings', label: 'Block Settings' });
+      list.push({ id: 'mapping', label: 'Connection Mapping' });
+      list.push({ id: 'notes', label: 'Notes' });
+    }
+    if (needsAdvanced) {
+      if (list.length === 0) list.push({ id: 'settings', label: 'Block Settings' });
+      list.push({ id: 'advanced', label: 'Advanced' });
+    }
+    return list;
+  }, [layout, needsAdvanced]);
+
+  // A layout switch must never strand the dialog on a tab that no longer exists.
+  useEffect(() => {
+    if (tabs.length && !tabs.some((t) => t.id === tab)) setTab('settings');
+  }, [tabs, tab]);
+
+  useEffect(() => {
+    if (tab === 'mapping') setMappingOpened(true);
+  }, [tab]);
+
+  /** Untabbed and plain layouts render everything on one page. */
+  const singlePage = tabs.length === 0;
+  const showSettings = singlePage || tab === 'settings';
+  /**
+   * `blockSettings.tpl` puts Description directly under Label; the tabbed
+   * layout puts it after the block's own fields and repeats it on Notes. The
+   * Date, Math and String layouts have no Description at all.
+   */
+  const descriptionPlacement: 'none' | 'top' | 'bottom' =
+    layout === 'plain' ? 'none' : layout === 'untabbed' ? 'top' : 'bottom';
 
   /* ---- save ---- */
 
@@ -160,27 +217,38 @@ export default function BlockSettingsDialog({
         formPayload.description = description;
         formPayload.blockType = blockType;
 
+        const finalPayload = buildPayload(tab === 'advanced' ? {} : stored, formPayload);
+
         await session.saveBlockProperties(
           workflowId,
           node.id,
           blockType,
-          buildPayload(tab === 'advanced' ? {} : stored, formPayload),
+          finalPayload,
         );
 
-        if (canMap && incomingSourceId && mapping.some((r) => r.left || r.right)) {
+        const hasMapping = mapping.some((r) => r.left || r.right);
+        if (canMap && incomingSourceId && (mappingOpened || hasMapping)) {
+          // Send Mail always writes its full fixed row set, so clearing a field
+          // in the dialog actually clears it on the connection.
+          const sendmail = isSendmailMapping(mappingDetails) || blockType === 'sendmail';
           await session.saveConnectionProperties(
             workflowId,
             incomingSourceId,
             node.id,
-            blockType === 'sendmail' ? 'SENDMAIL' : 'READ',
-            mappingToPayload(mapping),
+            sendmail ? 'SENDMAIL' : 'READ',
+            sendmail ? sendmailMappingToPayload(mapping) : mappingToPayload(mapping),
           );
         }
 
-        onSaved({ label, description });
+        onSaved({ label, description, block_properties: finalPayload });
         notify('Block settings saved.', 'success');
-        if (close) onClose();
-        else void load();
+
+        if (close) {
+          onClose();
+        } else {
+          setStored(finalPayload);
+          setRawJson(JSON.stringify(stripTransient(finalPayload), null, 2));
+        }
       } catch (e) {
         setSaveError(errorText(e, 'Could not save the block settings.'));
       } finally {
@@ -193,8 +261,9 @@ export default function BlockSettingsDialog({
       description,
       incomingSourceId,
       label,
-      load,
       mapping,
+      mappingDetails,
+      mappingOpened,
       node.id,
       notify,
       onClose,
@@ -213,9 +282,6 @@ export default function BlockSettingsDialog({
 
   const footer = (
     <>
-      <span className="viz-modal-foot-note">
-        {readOnly ? 'Read-only — click Edit on the toolbar to make changes.' : `Block ${node.id}`}
-      </span>
       <button type="button" className="viz-btn" onClick={onClose}>
         {readOnly ? 'Close' : 'Cancel'}
       </button>
@@ -230,17 +296,52 @@ export default function BlockSettingsDialog({
             onClick={() => void save(true)}
             disabled={saving || loading}
           >
-            Save and close
+            Save and Close
           </button>
         </>
       ) : null}
     </>
   );
 
+  const labelRow = (
+    <div className="viz-field-grid">
+      <div className="viz-field">
+        <label className="viz-field-label" htmlFor="viz-block-label">
+          Label
+        </label>
+        <div className="viz-field-control">
+          <input
+            id="viz-block-label"
+            className="viz-input"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
+  const descriptionRow = (
+    <div className="viz-field is-full">
+      <label className="viz-field-label" htmlFor="viz-block-desc">
+        Description
+      </label>
+      <div className="viz-field-control">
+        <textarea
+          id="viz-block-desc"
+          className="viz-textarea"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="What this block does, and anything the next person should know."
+        />
+      </div>
+    </div>
+  );
+
   return (
     <Modal
       title={schema?.title || node.data.displayName || blockType}
-      subtitle={schema?.summary}
       size={schema && schema.groups.length > 1 ? 'lg' : 'md'}
       onClose={onClose}
       busy={saving}
@@ -259,43 +360,28 @@ export default function BlockSettingsDialog({
         />
       ) : (
         <>
-          <div className="viz-tabs" role="tablist">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={tab === t.id}
-                className={`viz-tab${tab === t.id ? ' is-active' : ''}`}
-                onClick={() => setTab(t.id)}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
+          {tabs.length ? (
+            <div className="viz-tabs" role="tablist">
+              {tabs.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t.id}
+                  className={`viz-tab${tab === t.id ? ' is-active' : ''}`}
+                  onClick={() => setTab(t.id)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div className="viz-tabpanel" role="tabpanel">
-            {tab === 'settings' ? (
+            {showSettings ? (
               <fieldset className="viz-form" disabled={readOnly}>
-                <div className="viz-field-grid">
-                  <div className="viz-field">
-                    <label className="viz-field-label" htmlFor="viz-block-label">
-                      Label
-                    </label>
-                    <div className="viz-field-control">
-                      <input
-                        id="viz-block-label"
-                        className="viz-input"
-                        value={label}
-                        onChange={(e) => setLabel(e.target.value)}
-                      />
-                      <p className="viz-field-help">
-                        Other blocks reference this block’s output as{' '}
-                        <code>{`{${label || 'label'}.field}`}</code>.
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                {labelRow}
+                {descriptionPlacement === 'top' ? descriptionRow : null}
 
                 {!schema ? (
                   <p className="viz-field-note">
@@ -319,7 +405,6 @@ export default function BlockSettingsDialog({
                     // eslint-disable-next-line react/no-array-index-key
                     <section className="viz-field-group" key={grp.title || index}>
                       {grp.title ? <h3>{grp.title}</h3> : null}
-                      {grp.description ? <p className="viz-field-group-desc">{grp.description}</p> : null}
                       <div className="viz-field-grid">
                         {visible.map((field) => (
                           <FieldRenderer
@@ -334,41 +419,36 @@ export default function BlockSettingsDialog({
                     </section>
                   );
                 })}
+
+                {descriptionPlacement === 'bottom' ? descriptionRow : null}
               </fieldset>
             ) : null}
 
-            {tab === 'mapping' && incomingSourceId ? (
-              <ConnectionMappingEditor
-                rows={mapping}
-                onChange={setMapping}
-                readOnly={readOnly}
-                sourceId={incomingSourceId}
-                targetId={node.id}
-              />
+            {tab === 'mapping' && !singlePage ? (
+              incomingSourceId ? (
+                <ConnectionMappingEditor
+                  rows={mapping}
+                  onChange={setMapping}
+                  readOnly={readOnly}
+                  workflowId={workflowId}
+                  sourceId={incomingSourceId}
+                  targetId={node.id}
+                  onDetails={setMappingDetails}
+                />
+              ) : (
+                <p className="viz-field-note" style={{ margin: '1rem' }}>
+                  Connect an incoming block to map fields.
+                </p>
+              )
             ) : null}
 
-            {tab === 'notes' ? (
+            {tab === 'notes' && !singlePage ? (
               <fieldset className="viz-form" disabled={readOnly}>
-                <div className="viz-field is-full">
-                  <label className="viz-field-label" htmlFor="viz-block-desc">
-                    Description
-                  </label>
-                  <div className="viz-field-control">
-                    <textarea
-                      id="viz-block-desc"
-                      className="viz-textarea"
-                      rows={8}
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="What this block does, and anything the next person should know."
-                    />
-                    <p className="viz-field-help">Shown as a tooltip on the canvas.</p>
-                  </div>
-                </div>
+                {descriptionRow}
               </fieldset>
             ) : null}
 
-            {tab === 'advanced' ? (
+            {tab === 'advanced' && !singlePage ? (
               <fieldset className="viz-form" disabled={readOnly}>
                 <p className="viz-field-note">
                   Raw <code>block_properties</code> for this block. Saving from this tab replaces the stored

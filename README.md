@@ -107,8 +107,18 @@ blocks open, display, save and round-trip correctly — their properties are
 edited as JSON on the **Advanced** tab, and are preserved byte-for-byte when the
 block is saved from any other tab. Use the classic dialog for a guided edit.
 
-Every block also gets an **Advanced** tab exposing raw `block_properties`, so no
-setting is ever unreachable — including for block types added later.
+Each dialog's tab strip and field order mirror the layout template
+`Customblockpopup::$templateArray` pairs the block with — `tabbedBlockSettings.tpl`
+(Block Settings · Connection Mapping · Notes), `blockSettings.tpl` (no tabs;
+Label, Description, then fields), or one of the bespoke Date/Math/String/rule
+layouts (no tabs, no Description). Blocks the controller does not list fall
+through to the tabbed layout with no block-specific fields, which is why Zip
+Files, LiveCloud Function and Clear Output show only Label, Description and the
+mapping tab.
+
+Blocks with no ported editor — the three above plus any type added later — also
+get an **Advanced** tab exposing raw `block_properties`, so no setting is ever
+unreachable.
 
 ## Features
 

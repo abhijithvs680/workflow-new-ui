@@ -87,6 +87,10 @@ export function toNodes(blocks: SessionBlock[], palette: PaletteGroup[]): VizNod
         configured: hasConfig(props),
         shortcode: b.short_code || '',
         reusable: !!b.reusable,
+        // The session serialises an absent map as `""`; `props` is already
+        // normalised to an object, and node data is typed as one.
+        block_properties: props,
+        properties: typeof b.properties === 'object' && b.properties ? b.properties : undefined,
       },
     };
   });
@@ -121,6 +125,7 @@ export function toEdges(connections: SessionConnection[], blocks: SessionBlock[]
       },
       branch,
       c.conId || `${c.sourceId}-${c.targetId}`,
+      c.properties
     );
   });
 }
@@ -133,7 +138,7 @@ export interface ConnectParams {
 }
 
 /** Single place that builds an edge so styling never drifts between paths. */
-export function buildEdge(params: ConnectParams, branch: EdgeBranch, id?: string): VizEdgeType {
+export function buildEdge(params: ConnectParams, branch: EdgeBranch, id?: string, properties?: Record<string, unknown>): VizEdgeType {
   const color = EDGE_COLORS[branch ?? 'plain'];
   return {
     id: id || `${params.source}-${params.target}`,
@@ -143,7 +148,7 @@ export function buildEdge(params: ConnectParams, branch: EdgeBranch, id?: string
     targetHandle: params.targetHandle || 'in',
     type: 'vizEdge',
     animated: false,
-    data: { branch },
+    data: { branch, properties },
     className: branch ? `viz-edge viz-edge-${branch}` : 'viz-edge',
     style: { stroke: color, strokeWidth: 1.5 },
     markerEnd: { type: MarkerType.ArrowClosed, width: 14, height: 14, color },
