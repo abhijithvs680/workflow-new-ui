@@ -1007,22 +1007,29 @@ fieldset:disabled .viz-textarea {
 
 /* ── List View (Workflows & Endpoints) ── */
 
+.viz-palette-group.is-list-view ul {
+  padding: 4px 8px;
+}
+
 .viz-palette-group.is-list-view li button {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
-  padding: 6px 14px;
-  border: 0;
+  padding: 6px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   background: none;
   font: inherit;
   color: var(--ink-800);
   text-align: left;
   cursor: grab;
+  margin-bottom: 2px;
 }
 
 .viz-palette-group.is-list-view li button:hover {
-  background: var(--primary-050);
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .viz-palette-group.is-list-view .viz-palette-icon {
@@ -1032,8 +1039,8 @@ fieldset:disabled .viz-textarea {
   width: 26px;
   height: 26px;
   flex: 0 0 26px;
-  border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
+  border-radius: 6px;
+  background: #334155;
   overflow: hidden;
 }
 
@@ -1041,7 +1048,7 @@ fieldset:disabled .viz-textarea {
   width: 16px;
   height: 16px;
   object-fit: contain;
-  filter: brightness(0) opacity(0.5);
+  filter: brightness(0) invert(1);
 }
 
 .viz-palette-group.is-list-view .viz-palette-icon em {

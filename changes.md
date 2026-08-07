@@ -72,8 +72,9 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 - Styled the block items (`.viz-palette-group li button`) as square cards (`aspect-ratio: 1`) with a slate gray background (`#64748b`) and a white icon in the center.
 - Implemented a hover effect overlay (`position: absolute`) that expands the block downwards, changes the background to the standard UI magenta (`#9d0052`), and reveals the block label underneath the icon.
 - Added conditional rendering in `src/components/Palette.tsx` to apply `.is-list-view` to "Workflows", "Endpoints", and "Reusable Workflows" categories so they retain their original vertical list styling as requested by the user, while other categories use `.is-grid-view`.
-- Replaced the expandable card hover effect on grid blocks with a simple blue (`#3b82f6`) highlight that matches standard UI styles, and relied on the native browser tooltip to display the block's full name.
-- Styled the icon background in list view (`.is-list-view .viz-palette-icon`) to be a very faint, light gray (`#f8fafc`) with slightly transparent icons to match the minimal aesthetic of the updated designs.
+- Reverted dynamic palette block colors to a unified dark slate (`#334155`) across all grid items, with a slight brightness bump on hover.
+- Redesigned the "Workflows", "Endpoints", and "Reusable Workflows" list views to include rounded hover states with a light blue background and border (`#eff6ff`, `#bfdbfe`).
+- Restored the dark slate background (`#334155`) and white inverted icons for the list view blocks to match the grid styling.
 
 ## 10. Remove Blocks button from Top bar
 
