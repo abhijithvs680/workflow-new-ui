@@ -189,6 +189,84 @@ link. It now opens the version **on the React canvas**.
 - `versionHref` lives in `lib/versions.ts`, not `App.tsx`, so
   `App → Studio → WorkflowSettings` does not import back into `App`.
 
+## 9. Dialog arrangement, drawer and control theme
+
+- **Fields are one per row again.** `.viz-field-grid` used
+  `repeat(auto-fit, minmax(280px, 1fr))`, so fields reflowed into two or three
+  columns and lost the order the templates define — this is the "collapsed"
+  arrangement. Every classic block form is a `<table>` of full-width
+  `label | control` rows, so the grid is now single-column, with an opt-in
+  `half` flag for the only places a template pairs two controls on one line:
+  the two Advanced Settings switches and `Limit From` / `Limit To`.
+- **Filter rows** follow `ssMultiFilter.tpl` — inline
+  `Filter Column : [key] [op] Filter Value : [value] [−]` with one right-aligned
+  **Add** underneath, instead of a header row plus an "Add filter" link.
+- **Sort** now shows the chips ("Sort Order") first, then
+  `Sort Column : [input] (•) ASC ( ) DESC [Add]`, which is the template's order;
+  it previously had the input above the chips and a dropdown instead of radios.
+- **Column Alias** regained its **Click to Generate** action, filling the box
+  with `column as column` for every column of the selected sheet, as
+  `#ColumnAlias` does.
+- **Dialogs are pinned**, not centred — see §8 — so the header and tabs stay put
+  as you move between blocks.
+- **Settings is a right-docked drawer** at full canvas height (`placement="right"`
+  on `Modal`), matching the classic `viz-custom-sidebar` rather than a centred box.
+- **One dropdown appearance.** Selects now share a single inline chevron, height,
+  hover, focus and disabled treatment; the pill-shaped `is-rounded` input/select
+  in the settings drawer were dropped for the standard control.
+  This also fixed a latent bug: the shared disabled rule used the `background`
+  shorthand, which reset `background-repeat/size/position` and **tiled the caret
+  across the whole control** — it now sets `background-color` only.
+
+Help text was removed throughout: field-level `help` strings, the Unique
+Validator hint, the "no fields" paragraphs, the Advanced-tab blurb, the
+unported-block explanation, and the Create-version / Reusable subtitles. What
+remains is state ("Connect an incoming block to map fields", "Loading…") and
+errors.
+
+## 10. Canvas silhouettes and a themed dropdown
+
+**Block families now have their own outline.** Conditions were the only shape on
+the canvas (the diamond); everything else was the same 220×80 rounded card
+differing only in colour. Each family now reads at a glance:
+
+| Family | Silhouette |
+|---|---|
+| trigger / entry | left pill — the flow starts here |
+| output | right pill — the flow ends here |
+| workflow | thick rules on both edges — the "predefined process" symbol |
+| sheet | square corners + a top rule — stored data |
+| file | folded bottom-left corner — a document |
+| math | extra-round | 
+| filter | left stripe — a gate on the path |
+| ai | alternating corners |
+| condition | diamond (unchanged) |
+
+Shape comes from `border-radius` and real borders, never `clip-path` or inset
+`box-shadow`. `clip-path` would cut off the border, drop shadow and the
+debug-active halo, all painted outside the box; an inset `box-shadow` accent
+would outrank that halo, which is declared earlier with the same specificity.
+Verified the halo still resolves on the bordered skins.
+
+**Native selects replaced by a themed listbox** (`components/ui/Select`). A
+native `<select>` draws its open list as OS chrome — a blue Windows popup — so
+the expanded state ignored the theme no matter how the closed control was
+styled. The new component keeps the closed appearance identical (same 32px
+height, chevron and focus ring) and renders the list from ordinary elements, so
+the panel, hover and selected rows use `--surface-raised`, `--primary-050` and
+`--primary-700`.
+
+The panel is portalled to `document.body` and positioned from the trigger's
+viewport rect, flipping above when it will not fit below: React Flow's
+transformed panes create containing blocks that would clip or mis-place an
+absolutely positioned child on the canvas, and a dialog's scrolling body would
+crop it. It also keeps the "value no longer in the list still round-trips"
+behaviour that `withCurrent` used to provide, which is now deleted.
+
+Swapped everywhere: schema selects, app/spreadsheet/document pickers, row-set
+cells, the filter operator, the connection-mapping target and Mail From, the
+settings drawer's app and hour pickers, and the recent-logs page size.
+
 ### Deployment note
 
 The running container mounts `Vizru-Docker/receiver/volumes/web/app-live/v1-web-app`

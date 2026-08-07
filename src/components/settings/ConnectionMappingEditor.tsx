@@ -23,6 +23,7 @@ import type { FormValue } from '@/api/http';
 import { PlusIcon, TrashIcon } from '../ui/icons';
 import { workflowApi, type ConnectionMappingDetails } from '@/api/workflow';
 import { AutocompleteInput } from '../ui/AutocompleteInput';
+import Select from '../ui/Select';
 import { Spinner } from '../ui/feedback';
 
 export interface MappingRow {
@@ -212,22 +213,12 @@ export default function ConnectionMappingEditor({
                   onChange={(e) => setLeft(f.name, e.target.value)}
                 />
               ) : f.kind === 'email' && (details?.allowedEmails?.length ?? 0) > 0 ? (
-                <select
-                  className="viz-select"
+                <Select
                   aria-label={f.label}
                   value={f.left}
-                  onChange={(e) => setLeft(f.name, e.target.value)}
-                >
-                  <option value="">— Select —</option>
-                  {(details?.allowedEmails || []).map((mail) => (
-                    <option key={mail} value={mail}>
-                      {mail}
-                    </option>
-                  ))}
-                  {f.left && !(details?.allowedEmails || []).includes(f.left) ? (
-                    <option value={f.left}>{f.left}</option>
-                  ) : null}
-                </select>
+                  options={(details?.allowedEmails || []).map((mail) => ({ value: mail, label: mail }))}
+                  onChange={(next) => setLeft(f.name, next)}
+                />
               ) : (
                 <AutocompleteInput
                   className="viz-input"
@@ -283,22 +274,13 @@ export default function ConnectionMappingEditor({
                 onChange={(e) => update(i, { right: e.target.value })}
               />
             ) : (
-              <select
-                className="viz-select"
+              <Select
                 aria-label={`Mapping ${i + 1} target`}
                 value={row.right}
-                onChange={(e) => update(i, { right: e.target.value })}
-              >
-                <option value="">- select -</option>
-                {targetFields.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-                {row.right && !targetFields.includes(row.right) ? (
-                  <option value={row.right}>{row.right} (not in this list)</option>
-                ) : null}
-              </select>
+                options={targetFields.map((f) => ({ value: f, label: f }))}
+                placeholder="- select -"
+                onChange={(next) => update(i, { right: next })}
+              />
             )}
             <button
               type="button"

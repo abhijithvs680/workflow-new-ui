@@ -11,6 +11,7 @@ import { errorText } from '@/api/http';
 import { PlusIcon, TrashIcon } from '../ui/icons';
 import { InlineError, Spinner } from '../ui/feedback';
 import { AutocompleteInput } from '../ui/AutocompleteInput';
+import Select from '../ui/Select';
 import {
   FILTER_OPERATORS,
   type Field,
@@ -64,6 +65,8 @@ function Row({
   help,
   required,
   full,
+  half,
+  labelExtra,
   children,
 }: {
   id: string;
@@ -71,13 +74,17 @@ function Row({
   help?: string;
   required?: boolean;
   full?: boolean;
+  half?: boolean;
+  /** Rendered under the label, as the classic "Click to Generate" link is. */
+  labelExtra?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
-    <div className={`viz-field${full ? ' is-full' : ''}`}>
+    <div className={`viz-field${full ? ' is-full' : ''}${half ? ' is-half' : ''}`}>
       <label className="viz-field-label" htmlFor={id}>
         {label}
         {required ? <abbr title="Required">*</abbr> : null}
+        {labelExtra}
       </label>
       <div className="viz-field-control">
         {children}
@@ -85,15 +92,6 @@ function Row({
       </div>
     </div>
   );
-}
-
-/**
- * A `<select>` whose stored value is no longer in the option list still has to
- * round-trip — otherwise opening and saving a dialog would silently clear it.
- */
-function withCurrent(options: Option[], value: string): Option[] {
-  if (!value || options.some((o) => o.value === value)) return options;
-  return [{ value, label: `${value} (not in this list)` }, ...options];
 }
 
 /* -------------------------------------------------------------------------- */
@@ -172,40 +170,33 @@ function FiltersEditor({
         ))}
       </datalist>
 
-      {/* Column / operator / value, the row ssMultiFilter.tpl renders. */}
-      <div className="viz-repeat-head is-filter">
-        <span>Filter Column</span>
-        <span />
-        <span>Filter Value</span>
-        <span />
-      </div>
-
+      {/*
+        `ssMultiFilter.tpl` labels each row inline —
+        "Filter Column : [key] [op] Filter Value : [value]" — and puts a single
+        right-aligned Add button underneath, so the rows read the same here.
+      */}
       {rows.map((row, i) => (
         // eslint-disable-next-line react/no-array-index-key
-        <div className="viz-repeat-row is-filter" key={i}>
+        <div className="viz-filter-row" key={i}>
+          <span className="viz-filter-label">Filter Column :</span>
           <input
             className="viz-input"
             list={listId}
-            placeholder="column"
             aria-label={`Filter ${i + 1} column`}
             value={row.key}
             onChange={(e) => update(i, { key: e.target.value })}
           />
-          <select
-            className="viz-select"
+          <Select
+            className="viz-filter-op"
             aria-label={`Filter ${i + 1} operator`}
             value={row.operator || '='}
-            onChange={(e) => update(i, { operator: e.target.value })}
-          >
-            {FILTER_OPERATORS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+            options={FILTER_OPERATORS}
+            placeholder="="
+            onChange={(op) => update(i, { operator: op })}
+          />
+          <span className="viz-filter-label">Filter Value :</span>
           <input
             className="viz-input"
-            placeholder="value"
             aria-label={`Filter ${i + 1} value`}
             value={row.value}
             onChange={(e) => update(i, { value: e.target.value })}
@@ -223,13 +214,16 @@ function FiltersEditor({
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        className="viz-link-btn"
-        onClick={() => onChange([...rows, { key: '', operator: '=', value: '' }])}
-      >
-        <PlusIcon size={12} /> Add filter
-      </button>
+
+      <div className="viz-filter-actions">
+        <button
+          type="button"
+          className="viz-btn is-outline is-sm"
+          onClick={() => onChange([...rows, { key: '', operator: '=', value: '' }])}
+        >
+          Add
+        </button>
+      </div>
     </div>
   );
 }
@@ -263,11 +257,31 @@ function SortEditor({
         ))}
       </datalist>
 
-      <div className="viz-repeat-row is-sort">
+      {/*
+        The template shows the accumulated chips first (its "Sort Order" row),
+        then the "Sort Column" input with ASC/DESC radios and an Add button.
+      */}
+      <div className="viz-chips">
+        {value.length === 0 ? <span className="viz-chips-empty">No sorting added</span> : null}
+        {value.map((row) => (
+          <span className="viz-chip" key={row.sort_column}>
+            {row.sort_column}-{row.sort_order}
+            <button
+              type="button"
+              aria-label={`Remove sort on ${row.sort_column}`}
+              onClick={() => onChange(value.filter((r) => r.sort_column !== row.sort_column))}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      <div className="viz-sort-row">
+        <span className="viz-filter-label">Sort Column :</span>
         <input
           className="viz-input"
           list={listId}
-          placeholder="column"
           aria-label="Sort column"
           value={column}
           onChange={(e) => setColumn(e.target.value)}
@@ -278,34 +292,29 @@ function SortEditor({
             }
           }}
         />
-        <select
-          className="viz-select"
-          aria-label="Sort direction"
-          value={order}
-          onChange={(e) => setOrder(e.target.value === 'desc' ? 'desc' : 'asc')}
-        >
-          <option value="asc">Ascending</option>
-          <option value="desc">Descending</option>
-        </select>
-        <button type="button" className="viz-btn is-sm" onClick={add}>
+        <span className="viz-radio-inline" role="radiogroup" aria-label="Sort direction">
+          <label className="viz-radio">
+            <input
+              type="radio"
+              name={`${listId}-order`}
+              checked={order === 'asc'}
+              onChange={() => setOrder('asc')}
+            />
+            <span>ASC</span>
+          </label>
+          <label className="viz-radio">
+            <input
+              type="radio"
+              name={`${listId}-order`}
+              checked={order === 'desc'}
+              onChange={() => setOrder('desc')}
+            />
+            <span>DESC</span>
+          </label>
+        </span>
+        <button type="button" className="viz-btn is-outline is-sm" onClick={add}>
           Add
         </button>
-      </div>
-
-      <div className="viz-chips">
-        {value.length === 0 ? <span className="viz-chips-empty">No sorting added</span> : null}
-        {value.map((row) => (
-          <span className="viz-chip" key={row.sort_column}>
-            {row.sort_column} · {row.sort_order}
-            <button
-              type="button"
-              aria-label={`Remove sort on ${row.sort_column}`}
-              onClick={() => onChange(value.filter((r) => r.sort_column !== row.sort_column))}
-            >
-              ×
-            </button>
-          </span>
-        ))}
       </div>
     </div>
   );
@@ -390,20 +399,14 @@ function RowsetEditor({
             switch (col.kind) {
               case 'select':
                 return (
-                  <select
+                  <Select
                     key={col.name}
-                    className="viz-select"
                     aria-label={`${col.label} ${i + 1}`}
                     value={cell}
-                    onChange={(e) => update(i, col.name, e.target.value)}
-                  >
-                    {(col.options || []).some((o) => o.value === '') ? null : <option value="">—</option>}
-                    {withCurrent(col.options || [], cell).map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+                    options={(col.options || []).filter((o) => o.value !== '')}
+                    placeholder={(col.options || []).find((o) => o.value === '')?.label ?? '—'}
+                    onChange={(next) => update(i, col.name, next)}
+                  />
                 );
               case 'checkbox': {
                 const on = col.trueValue ?? '1';
@@ -519,7 +522,6 @@ function WorkflowSearchField({
         ))}
       </datalist>
       {busy ? <Spinner /> : null}
-      {value ? <p className="viz-field-help">Selected: {value}</p> : null}
     </div>
   );
 }
@@ -551,7 +553,30 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
 
     case 'textarea':
       return (
-        <Row id={id} label={field.label} help={field.help} required={field.required} full>
+        <Row
+          id={id}
+          label={field.label}
+          help={field.help}
+          required={field.required}
+          full
+          labelExtra={
+            field.generate === 'columnAlias' ? (
+              <button
+                type="button"
+                className="viz-generate-link"
+                disabled={!columns.length}
+                title={
+                  columns.length
+                    ? 'Fill with "column as column" for every column'
+                    : 'Choose a spreadsheet first'
+                }
+                onClick={() => set(columns.map((c) => `${c} as ${c}`).join(','))}
+              >
+                Click to Generate
+              </button>
+            ) : null
+          }
+        >
           <textarea
             id={id}
             className={`viz-textarea${field.monospace ? ' is-mono' : ''}`}
@@ -565,7 +590,7 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
 
     case 'checkbox':
       return (
-        <Row id={id} label={field.label} help={field.help} full={field.full}>
+        <Row id={id} label={field.label} help={field.help} full={field.full} half={field.half}>
           <label className="viz-checkbox">
             <input id={id} type="checkbox" checked={!!value} onChange={(e) => set(e.target.checked)} />
             <span>{field.checkboxLabel || 'Enabled'}</span>
@@ -575,7 +600,7 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
 
     case 'radio':
       return (
-        <Row id={id} label={field.label} help={field.help} full={field.full}>
+        <Row id={id} label={field.label} help={field.help} full={field.full} half={field.half}>
           <div className="viz-radio-group" role="radiogroup" aria-label={field.label}>
             {field.options.map((o) => (
               <label className="viz-radio" key={o.value}>
@@ -598,7 +623,7 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
       if (field.allowCustom) {
         const listId = `${id}-opts`;
         return (
-          <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
+          <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
             <input
               id={id}
               className="viz-input"
@@ -618,15 +643,8 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
         );
       }
       return (
-        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
-          <select id={id} className="viz-select" value={current} onChange={(e) => set(e.target.value)}>
-            <option value="">— Select —</option>
-            {withCurrent(field.options, current).map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
+        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
+          <Select id={id} value={current} options={field.options} onChange={set} />
         </Row>
       );
     }
@@ -662,7 +680,7 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
 
     case 'workflowSearch':
       return (
-        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
+        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
           <WorkflowSearchField id={id} value={String(value ?? '')} onChange={set} />
         </Row>
       );
@@ -715,7 +733,7 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
     default: {
       const type = field.kind === 'number' ? 'number' : field.kind === 'email' ? 'email' : 'text';
       return (
-        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
+        <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
           {type === 'text' ? (
             <AutocompleteInput
               id={id}
@@ -758,21 +776,15 @@ function AppField({
   );
 
   return (
-    <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
-      <select
+    <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
+      <Select
         id={id}
-        className="viz-select"
         value={value}
+        options={apps}
         disabled={busy}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{busy ? 'Loading apps…' : '— Select —'}</option>
-        {withCurrent(apps, value).map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        placeholder={busy ? 'Loading apps…' : '— Select —'}
+        onChange={onChange}
+      />
       {error ? <InlineError>{error}</InlineError> : null}
     </Row>
   );
@@ -798,21 +810,15 @@ function RemoteSelect({
   const { options: list, busy, error } = useAsyncOptions(() => load(parent), [parent]);
 
   return (
-    <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full}>
-      <select
+    <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
+      <Select
         id={id}
-        className="viz-select"
         value={value}
+        options={list}
         disabled={busy || !parent}
-        onChange={(e) => onChange(e.target.value)}
-      >
-        <option value="">{!parent ? emptyHint : busy ? 'Loading…' : '— Select —'}</option>
-        {withCurrent(list, value).map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+        placeholder={!parent ? emptyHint : busy ? 'Loading…' : '— Select —'}
+        onChange={onChange}
+      />
       {error ? <InlineError>{error}</InlineError> : null}
     </Row>
   );

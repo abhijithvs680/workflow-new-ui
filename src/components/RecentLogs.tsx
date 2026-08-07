@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Select from './ui/Select';
 import { workflowApi } from '@/api/workflow';
 import { errorText } from '@/api/http';
 import type { RecentLogRow } from '@/types/workflow';
@@ -96,22 +97,18 @@ export default function RecentLogs({
               <label className="viz-visually-hidden" htmlFor="viz-log-count">
                 Number of logs
               </label>
-              <select
+              <Select
                 id="viz-log-count"
-                className="viz-select is-sm"
-                value={length}
-                onChange={(e) => {
-                  const n = Number(e.target.value) || 10;
+                small
+                value={String(length)}
+                options={PAGE_SIZES.map((n) => ({ value: String(n), label: String(n) }))}
+                placeholder={String(length)}
+                onChange={(v) => {
+                  const n = Number(v) || 10;
                   setLength(n);
                   void load(n);
                 }}
-              >
-                {PAGE_SIZES.map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
+              />
               <button
                 type="button"
                 className="viz-icon-btn"

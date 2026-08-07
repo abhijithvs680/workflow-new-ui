@@ -12,6 +12,7 @@ import {
   type WorkflowVersion,
 } from '@/api/workflow';
 import Modal from './ui/Modal';
+import Select from './ui/Select';
 import { EmptyState, InlineError, Spinner } from './ui/feedback';
 import { PlusIcon, TrashIcon } from './ui/icons';
 import { formatVersionStamp, versionHref } from '@/lib/versions';
@@ -395,10 +396,12 @@ export default function WorkflowSettings({
 
   return (
     <>
+      {/* Docked right at full height, as the classic settings sidebar is. */}
       <Modal
         title="Settings"
         subtitle={workflowName ? `(${workflowName})` : shortCode ? `(${shortCode})` : undefined}
         size="sm"
+        placement="right"
         onClose={onClose}
       >
         {loading ? (
@@ -489,19 +492,16 @@ export default function WorkflowSettings({
                       />
                       <span>{o.label}</span>
                       {o.value === 'day' && schedule === 'day' ? (
-                        <select
-                          className="viz-select is-sm"
-                          aria-label="Hour (UTC)"
-                          value={hour}
-                          onChange={(e) => setHour(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {HOURS.map((h) => (
-                            <option key={h.value} value={h.value}>
-                              {h.label}
-                            </option>
-                          ))}
-                        </select>
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            small
+                            aria-label="Hour (UTC)"
+                            value={hour}
+                            options={HOURS}
+                            placeholder="Hour"
+                            onChange={setHour}
+                          />
+                        </span>
                       ) : null}
                     </label>
                   ))}
@@ -617,7 +617,7 @@ export default function WorkflowSettings({
                 }}
               >
                 <input
-                  className="viz-input is-rounded"
+                  className="viz-input"
                   list="viz-category-options"
                   placeholder="Add Category"
                   aria-label="Add category"
@@ -632,7 +632,7 @@ export default function WorkflowSettings({
                 </datalist>
                 <button
                   type="submit"
-                  className="viz-btn is-outline is-rounded"
+                  className="viz-btn is-outline"
                   disabled={categoryBusy || !newCategory.trim()}
                 >
                   Add Category
@@ -643,20 +643,14 @@ export default function WorkflowSettings({
             {/* ------------------------------------------------ connect app */}
             <section className="viz-settings-section">
               <span className="viz-settings-title">Connect to an App</span>
-              <select
-                className="viz-select is-rounded"
+              <Select
                 aria-label="Connected app"
                 value={connectedApp}
+                options={apps.map((a) => ({ value: a.shortCode, label: a.name }))}
                 disabled={appBusy}
-                onChange={(e) => void connectApp(e.target.value)}
-              >
-                <option value="">Select</option>
-                {apps.map((a) => (
-                  <option key={a.shortCode} value={a.shortCode}>
-                    {a.name}
-                  </option>
-                ))}
-              </select>
+                placeholder="Select"
+                onChange={(next) => void connectApp(next)}
+              />
             </section>
 
             {/* --------------------------------------------------- reusable */}
@@ -698,7 +692,6 @@ export default function WorkflowSettings({
       {showCreateVersion ? (
         <Modal
           title="Create version"
-          subtitle="Snapshots the workflow as it is saved right now."
           size="sm"
           onClose={() => setShowCreateVersion(false)}
           busy={versionsBusy}
@@ -890,7 +883,6 @@ function ReusableEditor({
   return (
     <Modal
       title={reusable ? 'Edit reusable inputs' : 'Convert workflow as reusable'}
-      subtitle="Other workflows can call this one and pass these inputs by name."
       size="md"
       onClose={onClose}
       busy={busy || loading}

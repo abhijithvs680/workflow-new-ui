@@ -383,17 +383,9 @@ export default function BlockSettingsDialog({
                 {labelRow}
                 {descriptionPlacement === 'top' ? descriptionRow : null}
 
-                {!schema ? (
+                {!schema || unportedNote ? (
                   <p className="viz-field-note">
-                    No dedicated editor exists for <code>{blockType}</code>. Use the Advanced tab to edit its
-                    properties directly.
-                  </p>
-                ) : null}
-
-                {unportedNote ? (
-                  <p className="viz-field-note is-warning">
-                    {unportedNote} Its properties remain editable on the Advanced tab, and are preserved
-                    untouched when you save from here.
+                    Edit this block on the Advanced tab.
                   </p>
                 ) : null}
 
@@ -450,10 +442,6 @@ export default function BlockSettingsDialog({
 
             {tab === 'advanced' && !singlePage ? (
               <fieldset className="viz-form" disabled={readOnly}>
-                <p className="viz-field-note">
-                  Raw <code>block_properties</code> for this block. Saving from this tab replaces the stored
-                  document with exactly what is below.
-                </p>
                 <textarea
                   className="viz-textarea is-mono is-tall"
                   spellCheck={false}

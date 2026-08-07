@@ -43,12 +43,28 @@ interface FieldBase {
   required?: boolean;
   /** Render across the full dialog width instead of the label/control grid. */
   full?: boolean;
+  /**
+   * Share a row with the next field. Only for the handful of places a classic
+   * template puts two controls on one line — `Limit From` / `Limit To` and the
+   * two Advanced Settings switches in `ssMultiFilter.tpl`.
+   */
+  half?: boolean;
   /** Hide the row unless this returns true. */
   when?: (values: Values) => boolean;
 }
 
 export type Field =
-  | (FieldBase & { kind: 'text' | 'textarea' | 'number' | 'email' | 'url'; rows?: number; monospace?: boolean })
+  | (FieldBase & {
+      kind: 'text' | 'textarea' | 'number' | 'email' | 'url';
+      rows?: number;
+      monospace?: boolean;
+      /**
+       * Renders the template's "Click to Generate" action under the label.
+       * `columnAlias` fills the box with `col as col` for every column of the
+       * selected spreadsheet, as `ssMultiFilter.tpl`'s `#ColumnAlias` does.
+       */
+      generate?: 'columnAlias';
+    })
   | (FieldBase & { kind: 'select'; options: Option[]; allowCustom?: boolean })
   | (FieldBase & { kind: 'radio'; options: Option[] })
   | (FieldBase & { kind: 'checkbox'; trueValue?: string; falseValue?: string; checkboxLabel?: string })

@@ -43,7 +43,6 @@ function spreadsheetSource(ssidKey: string, realtime = false): Field[] {
       name: '_source_mode',
       label: 'Data source',
       options: options(['app', 'Select from app list'], ['shortcode', 'Select via shortcode']),
-      help: 'Shortcode mode accepts a {placeholder}, so the sheet can be chosen at runtime.',
     },
     ...(realtime
       ? ([
@@ -92,24 +91,29 @@ function filterRows(): Field {
  */
 function ssAdvancedSettings(): FieldGroup {
   return group('Advanced Settings', [
+    // The template pairs these two switches on one row, and Limit From/To on
+    // the next; everything after them is a full-width row of its own.
     {
       kind: 'checkbox',
       name: 'big_data',
-      label: 'Large data',
+      label: '',
       checkboxLabel: 'Enable for large data',
+      half: true,
     },
     {
       kind: 'checkbox',
       name: 'row_count',
-      label: 'Row count',
+      label: '',
       checkboxLabel: 'Row count only',
+      half: true,
     },
-    text('limit_offset', 'Limit From'),
-    text('limit_to', 'Limit To'),
+    text('limit_offset', 'Limit From', { half: true }),
+    text('limit_to', 'Limit To', { half: true }),
     textarea('alias_column', 'Column Alias', {
       rows: 3,
       monospace: true,
-      help: 'One per line, in the form "column as alias".',
+      placeholder: 'col as value\ncol as value',
+      generate: 'columnAlias',
     }),
     text('distinct_column', 'Distinct Column'),
     { kind: 'sort', name: 'sort_by', label: 'Sort Order' },
@@ -117,8 +121,8 @@ function ssAdvancedSettings(): FieldGroup {
 }
 
 /** `blockComponents/inputOrSelect.tpl` — a text box plus a picker over one name. */
-function idField(name: string, label: string, help: string): Field {
-  return text(name, label, { help });
+function idField(name: string, label: string): Field {
+  return text(name, label);
 }
 
 function group(title: string | undefined, fields: Field[], description?: string): FieldGroup {
@@ -128,12 +132,12 @@ function group(title: string | undefined, fields: Field[], description?: string)
 /** `fileOperationsBlock.tpl` always opens with App and Collection. */
 function fileTarget(): Field[] {
   return [
-    idField('lid', 'App', 'App id or short code. Accepts a {placeholder}.'),
-    idField('cid', 'Collection', 'Collection id. Accepts a {placeholder}.'),
+    idField('lid', 'App'),
+    idField('cid', 'Collection'),
   ];
 }
 
-const FILE_FIELD = idField('fid', 'File', 'File id. Accepts a {placeholder}.');
+const FILE_FIELD = idField('fid', 'File');
 
 /* -------------------------------------------------------------------------- */
 /* Schemas                                                                    */
@@ -208,8 +212,8 @@ const TRIGGER_FIELDS: Field[] = [
     label: 'Authentication Required?',
     checkboxLabel: 'Require an authenticated caller',
   },
-  text('user_email', 'User Email', {
-    help: 'Runs the workflow as this user when authentication is required.',
+  text('actor_id', 'Run as', {
+    placeholder: 'user@example.com',
   }),
 ];
 
@@ -222,12 +226,12 @@ function triggerSchema(title: string, summary: string): BlockSchema {
  * Label, Description, Connection Mapping and Notes, nothing else. Its
  * `block_properties` are still reachable through the Advanced tab.
  */
-function noFieldsTabbed(title: string, summary: string, note: string): BlockSchema {
+function noFieldsTabbed(title: string, summary: string): BlockSchema {
   return {
     title,
     summary,
     layout: 'tabbed',
-    groups: [group(undefined, [{ kind: 'note', name: '_no_fields', label: '', text: note }])],
+    groups: [],
   };
 }
 
@@ -352,7 +356,6 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
           full: true,
           monospace: true,
           placeholder: '{status} == "approved"',
-          help: 'Reference earlier block output with {block_label.field}.',
         }),
       ]),
     ],
@@ -373,12 +376,6 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
             ['check', 'Create — To create a unique check'],
             ['drop', 'Drop — To complete the check'],
           ),
-        },
-        {
-          kind: 'note',
-          name: '_uv_hint',
-          label: '',
-          text: 'With Create selected, downstream blocks can test {label.permission == true} to see whether this run holds the lock.',
         },
       ]),
     ],
@@ -401,7 +398,6 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   clearoutput: noFieldsTabbed(
     'Clear Output Block',
     'Empties the accumulated output so later blocks start from a clean row.',
-    'This block has no settings of its own beyond its label, description and connection mapping.',
   ),
 
   arrayextract: {
@@ -512,7 +508,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
           checkboxLabel: 'Notify when online, save to Inbox when offline.',
           when: (v) => v.identifier === 'job_id',
         },
-        text('tags', 'Tag', { help: 'Socket event name the client listens on.' }),
+        text('tags', 'Tag'),
         { kind: 'variables', name: 'variables', label: 'Variable' },
       ]),
     ],
@@ -543,7 +539,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
           'notify_type',
           'Notification Type',
           options(['success', 'success'], ['danger', 'error'], ['warning', 'warning'], ['info', 'info']),
-          { allowCustom: true, help: 'A {placeholder} may be used instead of a fixed type.' },
+          { allowCustom: true },
         ),
         text('message', 'Message', { full: true }),
       ]),
@@ -651,19 +647,18 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
   getfiledetails: fileBlockSchema('Get File Details', 'Reads metadata for one file.', [FILE_FIELD]),
   processfile: fileBlockSchema('Process File', 'Parses a stored file into rows.', [FILE_FIELD]),
   movefile: fileBlockSchema('Move File', 'Moves a file to another collection.', [
-    idField('new-cid', 'New Collection', 'Destination collection id.'),
+    idField('new-cid', 'New Collection'),
     FILE_FIELD,
   ]),
   copyfile: fileBlockSchema('Copy File', 'Copies a file into another app or collection.', [
     FILE_FIELD,
-    idField('new-lid', 'New App', 'Destination app id.'),
-    idField('new-cid', 'New Collection', 'Destination collection id.'),
+    idField('new-lid', 'New App'),
+    idField('new-cid', 'New Collection'),
   ]),
   createfile: fileBlockSchema('Create File', 'Creates a file from data, a URL, or the request.', [
     select('operationType', 'Type', options(['data', 'Data'], ['url', 'URL'], ['file', 'File in Request'])),
     text('filename', 'Name', { when: (v) => v.operationType !== 'file' }),
     text('data', 'Input', {
-      help: 'The data, or the source URL, depending on Type.',
       when: (v) => v.operationType !== 'file',
     }),
     text('mimetype', 'Mimetype', { when: (v) => v.operationType !== 'file' }),
@@ -672,11 +667,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     text('tags', 'Tags'),
   ]),
 
-  zipfiles: noFieldsTabbed(
-    'Zip Files',
-    'Bundles files into a single archive.',
-    'The classic dialog configures this block entirely through its connection mapping. Use the Advanced tab to edit stored properties directly.',
-  ),
+  zipfiles: noFieldsTabbed('Zip Files', 'Bundles files into a single archive.'),
 
   googleocr: {
     title: 'Google OCR',
@@ -749,9 +740,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     layout: 'untabbed',
     groups: [
       group(undefined, [
-        text('namespace', 'NameSpace', {
-          help: 'Prefix for the child output, so {namespace.field} stays unambiguous.',
-        }),
+        text('namespace', 'NameSpace'),
         textarea('extra_params', 'Extra Parameters', { rows: 3, monospace: true }),
         {
           kind: 'checkbox',
@@ -778,19 +767,15 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     ],
   },
 
-  livecloudfunction: noFieldsTabbed(
-    'LiveCloud Function',
-    'Calls a LiveCloud function.',
-    'The classic dialog passes this block its parameters through the connection mapping. Use the Advanced tab to edit stored properties directly.',
-  ),
+  livecloudfunction: noFieldsTabbed('LiveCloud Function', 'Calls a LiveCloud function.'),
 
   /* ---- User management ---- */
 
   adduser: userBlockSchema('Add/Edit User', 'Creates or updates a tenant user.', [
     text('name', 'Name'),
     text('fedId', 'Federation ID'),
-    idField('customerName', 'Group', 'Tenant group name. Accepts a {placeholder}.'),
-    idField('systemRoleName', 'Global Role', 'Global role name. Accepts a {placeholder}.'),
+    idField('customerName', 'Group'),
+    idField('systemRoleName', 'Global Role'),
     {
       kind: 'checkbox',
       name: 'sendmail',
@@ -833,7 +818,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     layout: 'untabbed',
     groups: [
       group(undefined, [
-        text('project', 'Select Project', { help: 'Rover project id.' }),
+        text('project', 'Select Project'),
         select(
           'searchsource',
           'Source',

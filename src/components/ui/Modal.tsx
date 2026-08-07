@@ -7,6 +7,11 @@ interface ModalProps {
   subtitle?: ReactNode;
   /** `md` suits most block forms; `lg` is for tabbed / two-column layouts. */
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  /**
+   * `right` docks the panel to the right edge at full height, the way the
+   * classic settings sidebar (`viz-custom-sidebar`) sits over the canvas.
+   */
+  placement?: 'center' | 'right';
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
@@ -25,6 +30,7 @@ export default function Modal({
   title,
   subtitle,
   size = 'md',
+  placement = 'center',
   onClose,
   children,
   footer,
@@ -85,14 +91,14 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="viz-overlay"
+      className={`viz-overlay is-${placement}`}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
       <div
         ref={panelRef}
-        className={`viz-modal is-${size}${busy ? ' is-busy' : ''}`}
+        className={`viz-modal is-${size}${placement === 'right' ? ' is-drawer' : ''}${busy ? ' is-busy' : ''}`}
         role="dialog"
         aria-modal="true"
         aria-label={typeof title === 'string' ? title : undefined}
