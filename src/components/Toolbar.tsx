@@ -1,6 +1,5 @@
 import RecentLogs from './RecentLogs';
 import {
-  BlocksIcon,
   CheckIcon,
   CogIcon,
   FitIcon,
@@ -17,7 +16,6 @@ export interface ToolbarProps {
   dirty: boolean;
   busy: boolean;
   editing: boolean;
-  paletteOpen: boolean;
   settingsOpen: boolean;
   hasSelection: boolean;
   hasEdgeSelection: boolean;
@@ -51,7 +49,6 @@ export default function Toolbar(props: ToolbarProps) {
     workflowId,
     busy,
     editing,
-    paletteOpen,
     settingsOpen,
     hasEdgeSelection,
     activeLogId,
@@ -145,17 +142,6 @@ export default function Toolbar(props: ToolbarProps) {
         {editing ? (
           <button
             type="button"
-            className={`viz-btn${paletteOpen ? ' is-active' : ''}`}
-            onClick={props.onTogglePalette}
-            title="Block palette"
-          >
-            <BlocksIcon /> Blocks
-          </button>
-        ) : null}
-
-        {editing ? (
-          <button
-            type="button"
             className="viz-btn"
             onClick={props.onAutoLayout}
             disabled={busy}
@@ -175,7 +161,7 @@ export default function Toolbar(props: ToolbarProps) {
           onClick={props.onToggleSettings}
           title="Workflow settings"
         >
-          <CogIcon /> Settings
+          <CogIcon />
         </button>
 
         <a

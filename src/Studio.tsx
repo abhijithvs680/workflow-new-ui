@@ -864,7 +864,6 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
         dirty={dirty}
         busy={busy}
         editing={editing}
-        paletteOpen={paletteOpen}
         settingsOpen={settingsOpen}
         hasSelection={!!selected && selected !== entryId}
         hasEdgeSelection={!!selectedEdge}

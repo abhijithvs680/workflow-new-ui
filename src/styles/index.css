@@ -940,10 +940,10 @@ fieldset:disabled .viz-textarea {
 /* ── Grid View (Action Blocks) ── */
 
 .viz-palette-group.is-grid-view ul {
-  padding: 8px 14px;
+  padding: 12px 16px;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 6px;
+  gap: 8px;
 }
 
 .viz-palette-group.is-grid-view li {
@@ -973,12 +973,9 @@ fieldset:disabled .viz-textarea {
 }
 
 .viz-palette-group.is-grid-view li button:hover {
-  background: #9d0052;
-  height: auto;
-  min-height: 100%;
-  padding: 6px 4px;
+  background: #3b82f6; /* Blue hover */
   z-index: 10;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
 .viz-palette-group.is-grid-view .viz-palette-icon {
@@ -991,32 +988,21 @@ fieldset:disabled .viz-textarea {
 }
 
 .viz-palette-group.is-grid-view .viz-palette-icon img {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   object-fit: contain;
   filter: brightness(0) invert(1);
 }
 
 .viz-palette-group.is-grid-view .viz-palette-icon em {
   font-style: normal;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
 }
 
 .viz-palette-group.is-grid-view .viz-palette-label {
   display: none;
-  font-size: 10.5px;
-  font-weight: 500;
-  text-align: center;
-  line-height: 1.15;
-  margin-top: 4px;
-  width: 100%;
-  word-wrap: break-word;
-}
-
-.viz-palette-group.is-grid-view li button:hover .viz-palette-label {
-  display: block;
 }
 
 /* ── List View (Workflows & Endpoints) ── */
@@ -1047,21 +1033,22 @@ fieldset:disabled .viz-textarea {
   height: 26px;
   flex: 0 0 26px;
   border-radius: var(--radius-sm);
-  background: var(--surface-sunken);
+  background: #f8fafc; /* Very light background, almost no color */
   overflow: hidden;
 }
 
 .viz-palette-group.is-list-view .viz-palette-icon img {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   object-fit: contain;
+  opacity: 0.5; /* Fade the icon slightly to match the image's faint look */
 }
 
 .viz-palette-group.is-list-view .viz-palette-icon em {
   font-style: normal;
   font-size: 10px;
   font-weight: 700;
-  color: var(--ink-500);
+  color: var(--ink-400);
 }
 
 .viz-palette-group.is-list-view .viz-palette-label {
