@@ -965,27 +965,15 @@ fieldset:disabled .viz-textarea {
   padding: 4px;
   border: 0;
   border-radius: 6px;
-  background: #64748b; /* fallback */
+  background: #334155;
   color: #ffffff;
   cursor: grab;
   z-index: 1;
   transition: all 0.15s ease-out;
 }
 
-.viz-palette-group.is-grid-view li button.skin-action { background: #2563eb; }
-.viz-palette-group.is-grid-view li button.skin-ai { background: #f97316; }
-.viz-palette-group.is-grid-view li button.skin-filter { background: #059669; }
-.viz-palette-group.is-grid-view li button.skin-sheet { background: #16a34a; }
-.viz-palette-group.is-grid-view li button.skin-file { background: #d97706; }
-.viz-palette-group.is-grid-view li button.skin-math { background: #7c3aed; }
-.viz-palette-group.is-grid-view li button.skin-workflow { background: #4f46e5; }
-.viz-palette-group.is-grid-view li button.skin-custom { background: #475569; }
-.viz-palette-group.is-grid-view li button.skin-task { background: #64748b; }
-.viz-palette-group.is-grid-view li button.skin-dark,
-.viz-palette-group.is-grid-view li button.skin-output { background: #334155; }
-
 .viz-palette-group.is-grid-view li button:hover {
-  filter: brightness(0.9);
+  filter: brightness(1.15);
   z-index: 10;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
