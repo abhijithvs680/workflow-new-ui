@@ -53,3 +53,8 @@ Transformed the Workflow Settings from a centered modal dialog into a right-side
 - Set a distinct light red background (`#fef2f2`) and red text (`#ef4444`) for the Delete button (class `.is-danger`), to clearly differentiate destructive actions.
 - Resized the toolbar components (smaller button paddings, tighter gaps, and slightly smaller font size) so the entire toolbar fits cleanly within the standard `220px` width of a workflow block without bleeding outside the edges.
 - Increased the vertical padding inside `.viz-node-body` to slightly increase the overall height of the block nodes as requested.
+
+## 7. Removed Selection Actions from Top Bar
+
+**Issue:** The "Edit", "Clone", and "Delete" buttons were showing up in the top header toolbar when a node was selected. The user requested these to be removed since these actions are now handled by the hover toolbar.
+**Solution:** Removed the conditional `viz-toolbar-selection` block rendering these buttons from `src/components/Toolbar.tsx` and cleaned up unused imports and variables.

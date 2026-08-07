@@ -3,12 +3,10 @@ import {
   BlocksIcon,
   CheckIcon,
   CogIcon,
-  CopyIcon,
   FitIcon,
   LayoutIcon,
   PencilIcon,
   PlayIcon,
-  TrashIcon,
 } from './ui/icons';
 
 export interface ToolbarProps {
@@ -51,13 +49,10 @@ export default function Toolbar(props: ToolbarProps) {
     name,
     onNameChange,
     workflowId,
-    shortCode,
-    dirty,
     busy,
     editing,
     paletteOpen,
     settingsOpen,
-    hasSelection,
     hasEdgeSelection,
     activeLogId,
     canvasInteraction,
@@ -79,12 +74,7 @@ export default function Toolbar(props: ToolbarProps) {
             disabled={!editing}
             spellCheck={false}
           />
-          {shortCode ? (
-            <span className="viz-toolbar-code" title="Workflow short code">
-              {shortCode}
-            </span>
-          ) : null}
-          {dirty ? <span className="viz-pill is-dirty">Unsaved</span> : null}
+
         </div>
 
         <div className="viz-toolbar-edit-cluster">
@@ -137,24 +127,7 @@ export default function Toolbar(props: ToolbarProps) {
       </div>
 
       <div className="viz-toolbar-actions">
-        {editing && hasSelection ? (
-          <span className="viz-toolbar-selection">
-            <button type="button" className="viz-btn is-sm" onClick={props.onEditSelected} title="Edit selected block">
-              <PencilIcon /> Edit
-            </button>
-            <button type="button" className="viz-btn is-sm" onClick={props.onCloneSelected} title="Clone selected block">
-              <CopyIcon /> Clone
-            </button>
-            <button
-              type="button"
-              className="viz-btn is-sm is-danger"
-              onClick={props.onDeleteSelected}
-              title="Delete selected block (Del)"
-            >
-              <TrashIcon /> Delete
-            </button>
-          </span>
-        ) : null}
+
 
         {editing && hasEdgeSelection ? (
           <span className="viz-toolbar-selection">
