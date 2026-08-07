@@ -1,17 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { errorText } from '@/api/http';
-import { settingsApi, workflowApi, type WorkflowVersion } from '@/api/workflow';
-import Modal from './ui/Modal';
-import { EmptyState, InlineError, Spinner } from './ui/feedback';
-
-const SCHEDULES: Array<[string, string]> = [
-  ['0', 'Not scheduled'],
-  ['minute', 'Every minute'],
-  ['hour', 'Hourly'],
-  ['day', 'Daily'],
-  ['week', 'Weekly'],
-  ['month', 'Monthly'],
-];
+import { settingsApi, type WorkflowVersion } from '@/api/workflow';
+import { InlineError, Spinner } from './ui/feedback';
 
 interface Props {
   workflowId: string;
@@ -23,18 +13,11 @@ interface Props {
 }
 
 export default function WorkflowSettings({
-  workflowId,
   shortCode,
   onClose,
   onVersionApplied,
   notify,
 }: Props) {
-  // Runtime state
-  const [enableLog, setEnableLog] = useState(true);
-  const [schedule, setSchedule] = useState('0');
-  const [hour, setHour] = useState('');
-  const [savingRuntime, setSavingRuntime] = useState(false);
-  const [runtimeError, setRuntimeError] = useState('');
 
   // Versions state
   const [versions, setVersions] = useState<WorkflowVersion[]>([]);
@@ -61,19 +44,6 @@ export default function WorkflowSettings({
   useEffect(() => {
     void loadVersions();
   }, [loadVersions]);
-
-  const saveRuntime = async () => {
-    setSavingRuntime(true);
-    setRuntimeError('');
-    try {
-      await workflowApi.saveRuntime(workflowId, enableLog, schedule, hour);
-      notify('Workflow settings saved.', 'success');
-    } catch (e) {
-      setRuntimeError(errorText(e, 'Could not save workflow settings.'));
-    } finally {
-      setSavingRuntime(false);
-    }
-  };
 
   const createVersion = async () => {
     setVersionsBusy(true);
@@ -160,18 +130,22 @@ export default function WorkflowSettings({
                 {versions.length === 0 && !versionsBusy && !versionsError ? (
                   <div style={{fontSize: '12px', color: '#6b7280', padding: '8px 0'}}>No saved versions.</div>
                 ) : null}
-                {versions.map((v) => (
-                  <div className="viz-settings-version-item" key={v.id}>
-                    <div>
-                      <div className="viz-settings-version-date">{new Date(v.created_at).toLocaleString()}</div>
-                      <div className="viz-settings-version-note">{v.note || 'No note provided'}</div>
+                {versions.map((v: any) => {
+                  const id = String(v._id || v.id || '');
+                  const dateStr = v['created-at'] ? String(v['created-at']) : id;
+                  return (
+                    <div className="viz-settings-version-item" key={id}>
+                      <div>
+                        <div className="viz-settings-version-date">{dateStr}</div>
+                        <div className="viz-settings-version-note">{v.note || 'No note provided'}</div>
+                      </div>
+                      <div className="viz-settings-version-actions">
+                        <a onClick={() => void applyVersion(id)}>Apply</a>
+                        <a className="is-danger" onClick={() => void deleteVersion(id)}>Delete</a>
+                      </div>
                     </div>
-                    <div className="viz-settings-version-actions">
-                      <a onClick={() => void applyVersion(v.id)}>Apply</a>
-                      <a className="is-danger" onClick={() => void deleteVersion(v.id)}>Delete</a>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             
@@ -200,10 +174,6 @@ export default function WorkflowSettings({
               </div>
             </div>
 
-            {/* Hidden Runtime Settings (kept for functionality) */}
-            <div style={{display: 'none'}}>
-              <button onClick={() => void saveRuntime()}>Save Runtime</button>
-            </div>
           </div>
         </div>
       </div>
