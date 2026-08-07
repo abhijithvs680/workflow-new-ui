@@ -129,102 +129,80 @@ export default function WorkflowSettings({
           
           <div className="viz-settings-body">
             
-            {/* Runtime Settings */}
-            <div className="viz-settings-section">
-              <div className="viz-settings-section-header">
-                <span>Runtime Settings</span>
-                <button onClick={() => void saveRuntime()} disabled={savingRuntime}>
-                  {savingRuntime ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-              {runtimeError ? <InlineError>{runtimeError}</InlineError> : null}
-              <div className="viz-field-grid" style={{ gap: '8px 12px' }}>
-                <div className="viz-field is-full">
-                  <label className="viz-checkbox">
-                    <input type="checkbox" checked={enableLog} onChange={(e) => setEnableLog(e.target.checked)} />
-                    <span style={{fontSize: '12px'}}>Record execution log</span>
-                  </label>
-                </div>
-                <div className="viz-field is-full">
-                  <select
-                    className="viz-select is-sm"
-                    value={schedule}
-                    onChange={(e) => setSchedule(e.target.value)}
-                  >
-                    {SCHEDULES.map(([value, labelText]) => (
-                      <option key={value} value={value}>{labelText}</option>
-                    ))}
-                  </select>
-                </div>
-                {schedule === 'day' ? (
-                  <div className="viz-field is-full">
-                    <input
-                      className="viz-input is-sm"
-                      type="number"
-                      min={0}
-                      max={23}
-                      placeholder="Hour (0-23)"
-                      value={hour}
-                      onChange={(e) => setHour(e.target.value)}
-                    />
-                  </div>
-                ) : null}
-              </div>
+            {/* Top Icon Tabs */}
+            <div className="viz-settings-tabs">
+              <button className="viz-settings-tab is-active" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+              </button>
+              <button className="viz-settings-tab" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0l-.77.78-.77-.78a5.4 5.4 0 0 0-7.65 0C1.46 6.7 1.33 10.28 4 13l8 8 8-8c2.67-2.72 2.54-6.3.42-8.42z"></path><polyline points="3 12 7 12 10 6 14 18 17 12 21 12"></polyline></svg>
+              </button>
+              <button className="viz-settings-tab" type="button">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><path d="M8 10l-2 2 2 2"></path><path d="M16 10l2 2-2 2"></path></svg>
+              </button>
+              <button className="viz-settings-tab" type="button" style={{fontWeight: 'bold', fontSize: '14px', fontFamily: 'monospace'}}>
+                &#123;x&#125;
+              </button>
             </div>
 
             {/* Versions Section */}
             <div className="viz-settings-section">
               <div className="viz-settings-section-header">
-                <span>Versions</span>
-                <button onClick={() => setShowCreateVersion(true)}>Create</button>
+                <span className="viz-settings-section-title">Versions</span>
+                <button className="viz-btn-outline" onClick={() => setShowCreateVersion(true)}>Create</button>
               </div>
-              <a className="viz-settings-link" onClick={() => void loadVersions()}>View history</a>
+              <div className="viz-settings-history-box">View history</div>
               
+              {versionsBusy ? <div style={{padding: '10px 0'}}><Spinner size={16} /></div> : null}
               {versionsError ? <InlineError>{versionsError}</InlineError> : null}
-              {versionsBusy && versions.length === 0 ? <Spinner label="Loading..." /> : null}
-              {!versionsBusy && versions.length === 0 ? <EmptyState>No saved versions yet.</EmptyState> : null}
               
-              {versions.length > 0 ? (
-                <div style={{ marginTop: '8px' }}>
-                  {versions.map((v) => {
-                    const id = String(v._id || v.id || '');
-                    const dateStr = v['created-at'] ? String(v['created-at']) : id;
-                    return (
-                      <div key={id} className="viz-settings-version-item">
-                        <div>
-                          <div className="viz-settings-version-date">{dateStr}</div>
-                          <div className="viz-settings-version-note">{v.note || <em>no note</em>}</div>
-                        </div>
-                        <div className="viz-settings-version-actions">
-                          <a onClick={() => void applyVersion(id)}>Apply</a>
-                          <a className="is-danger" onClick={() => void deleteVersion(id)}>Delete</a>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
+              <div className="viz-settings-version-list">
+                {versions.length === 0 && !versionsBusy && !versionsError ? (
+                  <div style={{fontSize: '12px', color: '#6b7280', padding: '8px 0'}}>No saved versions.</div>
+                ) : null}
+                {versions.map((v) => (
+                  <div className="viz-settings-version-item" key={v.id}>
+                    <div>
+                      <div className="viz-settings-version-date">{new Date(v.created_at).toLocaleString()}</div>
+                      <div className="viz-settings-version-note">{v.note || 'No note provided'}</div>
+                    </div>
+                    <div className="viz-settings-version-actions">
+                      <a onClick={() => void applyVersion(v.id)}>Apply</a>
+                      <a className="is-danger" onClick={() => void deleteVersion(v.id)}>Delete</a>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
             
             {/* Add to category */}
             <div className="viz-settings-section">
-              <span className="viz-settings-section-title">Add to category</span>
+              <span className="viz-settings-section-title" style={{marginBottom: '12px', display: 'block'}}>Add to category</span>
               <div className="viz-settings-row">
-                <input placeholder="Add Category" className="viz-input is-sm" />
-                <button>Add Category</button>
+                <input placeholder="Add Category" className="viz-input-rounded" />
+                <button className="viz-btn-outline">Add Category</button>
               </div>
             </div>
             
             {/* Connect to an App */}
             <div className="viz-settings-section">
-              <span className="viz-settings-section-title">Connect to an App</span>
-              <select className="viz-select is-sm"><option>Select</option></select>
+              <span className="viz-settings-section-title" style={{marginBottom: '12px', display: 'block'}}>Connect to an App</span>
+              <select className="viz-select-rounded">
+                <option>Select</option>
+              </select>
             </div>
             
             {/* Reusable */}
-            <div className="viz-settings-section">
-              <span className="viz-settings-section-title">Reusable</span>
-              <button>Convert</button>
+            <div className="viz-settings-section" style={{borderBottom: 'none'}}>
+              <div className="viz-settings-section-header">
+                <span className="viz-settings-section-title">Reusable</span>
+                <button className="viz-btn-outline">Convert</button>
+              </div>
+            </div>
+
+            {/* Hidden Runtime Settings (kept for functionality) */}
+            <div style={{display: 'none'}}>
+              <button onClick={() => void saveRuntime()}>Save Runtime</button>
             </div>
           </div>
         </div>

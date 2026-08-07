@@ -2296,57 +2296,62 @@ fieldset:disabled .viz-textarea {
   }
 }
 
-/* ── Settings Panel (right-side drawer) ── */
+/* ── Settings Panel (Floating Modal) ── */
 .viz-settings-overlay {
   position: fixed;
   inset: 0;
   z-index: 1200;
-  background: rgba(0, 0, 0, 0.15);
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .viz-settings-panel {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 300px;
-  background: var(--surface-raised, #fff);
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08);
+  position: relative;
+  width: 380px;
+  max-width: 90vw;
+  max-height: 90vh;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
   z-index: 1201;
-  animation: slideInRight 0.2s ease-out;
+  animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slideInRight {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+@keyframes popIn {
+  0% { transform: scale(0.96); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .viz-settings-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 16px 16px 12px;
-  border-bottom: 1px solid var(--line, #e5e7eb);
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--line-light, #f3f4f6);
 }
 
 .viz-settings-header h3 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   margin: 0;
   color: var(--ink-900, #111);
 }
 
 .viz-settings-subtitle {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--ink-400, #9ca3af);
+  margin-top: 2px;
+  display: block;
 }
 
 .viz-settings-close {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 24px;
   cursor: pointer;
   color: var(--ink-500, #6b7280);
   padding: 0 4px;
@@ -2360,127 +2365,116 @@ fieldset:disabled .viz-textarea {
 .viz-settings-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0;
+  padding: 20px 24px;
+}
+
+.viz-settings-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.viz-settings-tab {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--line, #e5e7eb);
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink-700, #374151);
+  transition: all 0.1s ease;
+}
+
+.viz-settings-tab:hover {
+  background: var(--surface-sunken, #f9fafb);
+}
+
+.viz-settings-tab.is-active {
+  background: #0b57d0;
+  border-color: #0b57d0;
+  color: #ffffff;
 }
 
 .viz-settings-section {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--line, #e5e7eb);
+  padding-bottom: 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line-light, #f3f4f6);
 }
 
 .viz-settings-section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
-}
-
-.viz-settings-section-header span {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-900, #111);
-}
-
-.viz-settings-section-header button {
-  padding: 3px 12px;
-  border: 1px solid var(--primary, #3b82f6);
-  border-radius: 4px;
-  background: none;
-  color: var(--primary, #3b82f6);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.viz-settings-section-header button:hover {
-  background: var(--primary-050, #eff6ff);
+  margin-bottom: 12px;
 }
 
 .viz-settings-section-title {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--ink-900, #111);
-  margin-bottom: 8px;
 }
 
-.viz-settings-link {
-  font-size: 12px;
-  color: var(--primary, #3b82f6);
+.viz-btn-outline {
+  padding: 6px 14px;
+  border: 1px solid #0b57d0;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #0b57d0;
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  text-decoration: none;
-  display: block;
-  margin-bottom: 8px;
+  transition: all 0.15s;
 }
 
-.viz-settings-link:hover {
-  text-decoration: underline;
+.viz-btn-outline:hover {
+  background: #eff6ff;
 }
 
-.viz-settings-row {
+.viz-settings-history-box {
+  background: #f1f5f9;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink-700, #374151);
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.viz-settings-version-list {
   display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.viz-settings-row input {
-  flex: 1;
-  padding: 5px 8px;
-  border: 1px solid var(--line, #d1d5db);
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.viz-settings-row button,
-.viz-settings-section > button {
-  padding: 5px 12px;
-  border: 1px solid var(--primary, #3b82f6);
-  border-radius: 4px;
-  background: none;
-  color: var(--primary, #3b82f6);
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.viz-settings-section > select {
-  width: 100%;
-  padding: 5px 8px;
-  border: 1px solid var(--line, #d1d5db);
-  border-radius: 4px;
-  font-size: 12px;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .viz-settings-version-item {
-  padding: 6px 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-  border-bottom: 1px solid var(--line-light, #f3f4f6);
-}
-
-.viz-settings-version-item:last-child {
-  border-bottom: none;
+  align-items: flex-start;
+  font-size: 13px;
 }
 
 .viz-settings-version-date {
-  color: var(--primary, #3b82f6);
-  font-size: 12px;
+  color: #0b57d0;
+  font-size: 13px;
+  margin-bottom: 2px;
 }
 
 .viz-settings-version-note {
-  color: var(--ink-400, #9ca3af);
-  font-size: 11px;
+  color: var(--ink-500, #6b7280);
+  font-size: 12px;
 }
 
 .viz-settings-version-actions {
   display: flex;
-  gap: 8px;
-  font-size: 11px;
+  gap: 12px;
+  font-size: 13px;
 }
 
 .viz-settings-version-actions a {
-  color: var(--primary, #3b82f6);
+  color: #0b57d0;
   cursor: pointer;
 }
 
@@ -2489,5 +2483,26 @@ fieldset:disabled .viz-textarea {
 }
 
 .viz-settings-version-actions a.is-danger {
-  color: var(--danger, #ef4444);
+  color: #ef4444;
+}
+
+.viz-settings-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.viz-input-rounded,
+.viz-select-rounded {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--line, #e5e7eb);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+}
+
+.viz-input-rounded:focus,
+.viz-select-rounded:focus {
+  border-color: #0b57d0;
 }
