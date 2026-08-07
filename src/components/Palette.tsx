@@ -37,6 +37,16 @@ export default function Palette({
     if (open) searchRef.current?.focus();
   }, [open]);
 
+  useEffect(() => {
+    if (groups.length > 0 && Object.keys(collapsed).length === 0) {
+      const initialState: Record<string, boolean> = {};
+      groups.forEach((g) => {
+        initialState[g.category] = g.category.toUpperCase() !== 'ACTION';
+      });
+      setCollapsed(initialState);
+    }
+  }, [groups, collapsed]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return groups;
