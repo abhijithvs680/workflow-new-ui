@@ -32,8 +32,8 @@ export function layout(
   g.setGraph({
     rankdir: direction,
     // Keeps centre-to-centre near the classic ~200px despite wider cards.
-    ranksep: 70,
-    nodesep: 60,
+    ranksep: 120,
+    nodesep: 100,
     marginx: 80,
     marginy: 60,
   });
@@ -43,7 +43,10 @@ export function layout(
     g.setNode(n.id, { width: w, height: h });
   });
   edges.forEach((e) => {
-    if (g.hasNode(e.source) && g.hasNode(e.target)) g.setEdge(e.source, e.target);
+    if (g.hasNode(e.source) && g.hasNode(e.target)) {
+      const weight = e.data?.branch === 'yes' ? 1 : 10;
+      g.setEdge(e.source, e.target, { weight });
+    }
   });
 
   dagre.layout(g);
