@@ -374,7 +374,7 @@ export default function WorkflowList() {
         </main>
       </div>
 
-      <a className="viz-wl-fab" href="/workflow.new" title="Create a workflow">
+      <a className="viz-wl-fab" href="/#workflow.new" title="Create a workflow">
         <PlusIcon size={20} />
       </a>
 
