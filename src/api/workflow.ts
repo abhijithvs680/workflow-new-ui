@@ -138,7 +138,7 @@ export const workflowApi = {
     targetId: string,
   ): Promise<ConnectionMappingDetails> {
     const data = await postJson<PlatformEnvelope>('/workflow.studioconnection', {
-      workflow_id: workflowId,
+      workflowId,
       sourceId,
       targetId,
     });
