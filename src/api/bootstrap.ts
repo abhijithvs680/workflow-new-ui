@@ -296,13 +296,13 @@ async function fetchShell(param: string): Promise<ShellInfo> {
  * uses the one its endpoint expects:
  *
  *   id only        `workflow.save` — `new ObjectId($workflow_id)`
- *   id only        `workflow.savesession`, `workflow.reactconnection` — these
+ *   id only        `workflow.savesession`, `workflow.studioconnection` — these
  *                  key into the PHP session bucket, which `Debugger.php` seeds
  *                  under whatever parameter the shell was fetched with
  *   short code     `workflow.version` (`short_code`)
  *   short code     `workflow.settings/{sc}/json` — `loadWorkflowByShortcode`
  *                  with no id fallback
- *   either         `workflow.debugger`, `workflow.reactinfo`, `workflow.init`,
+ *   either         `workflow.debugger`, `workflow.studioinfo`, `workflow.init`,
  *                  `workflow.settings/{wid}`, `workflow.tags`
  *
  * The session-keyed group is why a short-code URL is resolved to the id and the
@@ -335,7 +335,7 @@ export async function loadWorkflow(param: string): Promise<BootData> {
 
   let workflowId = shell.workflowId;
 
-  const reactInfoHtml = await getHtml(`/workflow.reactinfo/${encodeURIComponent(workflowId)}`);
+  const reactInfoHtml = await getHtml(`/workflow.studioinfo/${encodeURIComponent(workflowId)}`);
   let reactInfo: any = {};
   try {
     reactInfo = JSON.parse(reactInfoHtml);
@@ -354,7 +354,7 @@ export async function loadWorkflow(param: string): Promise<BootData> {
    * `new ObjectId(...)`, which a 24-character short code passes, so the save
    * dies with "Error parsing ObjectId string".
    *
-   * `Reactinfo` resolves either form to `(string) $wrkflwObj['_id']`, so take
+   * `Studioinfo` resolves either form to `(string) $wrkflwObj['_id']`, so take
    * the id from there. The shell must then be re-fetched with it, because
    * `Debugger.php` also seeds the PHP session under whatever param it was given
    * (`session_set('workflow[' . $workflowId . ']', '')`) and every
@@ -392,7 +392,7 @@ export async function loadWorkflow(param: string): Promise<BootData> {
  * viewer from touching the parent workflow's session at all.
  */
 export async function loadWorkflowVersion(versionId: string): Promise<BootData> {
-  const raw = await getHtml(`/workflow.reactinfo/version/${encodeURIComponent(versionId)}`);
+  const raw = await getHtml(`/workflow.studioinfo/version/${encodeURIComponent(versionId)}`);
 
   let info: Record<string, unknown>;
   try {
@@ -425,7 +425,7 @@ export async function loadWorkflowVersion(versionId: string): Promise<BootData> 
 export async function reloadGraph(
   workflowId: string,
 ): Promise<{ blocks: SessionBlock[]; connections: SessionConnection[] }> {
-  const reactInfoHtml = await getHtml(`/workflow.reactinfo/${encodeURIComponent(workflowId)}`);
+  const reactInfoHtml = await getHtml(`/workflow.studioinfo/${encodeURIComponent(workflowId)}`);
   try {
     const reactInfo = JSON.parse(reactInfoHtml);
     return {

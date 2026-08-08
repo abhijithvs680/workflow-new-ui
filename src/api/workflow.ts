@@ -128,7 +128,7 @@ export const workflowApi = {
   /**
    * The JSON stand-in for `/workflow.connection` + `/workflow/connection.properties`.
    *
-   * `Reactconnection.php` resolves both blocks from the live workflow session,
+   * `Studioconnection.php` resolves both blocks from the live workflow session,
    * so the field lists reflect edits that have not been committed yet — exactly
    * what the classic `Executeaction` controller does.
    */
@@ -137,8 +137,8 @@ export const workflowApi = {
     sourceId: string,
     targetId: string,
   ): Promise<ConnectionMappingDetails> {
-    const data = await postJson<PlatformEnvelope>('/workflow.reactconnection', {
-      workflowId,
+    const data = await postJson<PlatformEnvelope>('/workflow.studioconnection', {
+      workflow_id: workflowId,
       sourceId,
       targetId,
     });
