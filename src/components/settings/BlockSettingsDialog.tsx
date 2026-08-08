@@ -75,6 +75,8 @@ export default function BlockSettingsDialog({
   const layout: BlockLayout = useMemo(() => layoutFor(blockType), [blockType]);
 
   const [tab, setTab] = useState<Tab>('settings');
+  /** Active group, for a schema whose groups are stepped rather than stacked. */
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -145,6 +147,8 @@ export default function BlockSettingsDialog({
    */
   const canMap = layout === 'tabbed';
   const needsAdvanced = !schema || !!unportedNote;
+  /** Groups behind a numbered strip rather than stacked down the page. */
+  const stepped = !!schema && schema.groupsAs === 'steps' && schema.groups.length > 1;
 
   const tabs: Array<{ id: Tab; label: string }> = useMemo(() => {
     const list: Array<{ id: Tab; label: string }> = [];
@@ -168,6 +172,11 @@ export default function BlockSettingsDialog({
   useEffect(() => {
     if (tab === 'mapping') setMappingOpened(true);
   }, [tab]);
+
+  // Opening a different block starts at its first section.
+  useEffect(() => {
+    setStep(0);
+  }, [blockType]);
 
   /** Untabbed and plain layouts render everything on one page. */
   const singlePage = tabs.length === 0;
@@ -321,6 +330,59 @@ export default function BlockSettingsDialog({
     </div>
   );
 
+  /**
+   * Numbered strip for a stepped schema. Every group keeps its tab even while
+   * its fields are all hidden by a `when`, so the steps never renumber under
+   * the pointer.
+   */
+  const stepStrip = stepped ? (
+    <div className="viz-tabs is-steps" role="tablist" aria-label="Configuration sections">
+      {schema.groups.map((grp, index) => (
+        <button
+          // Groups are static per schema.
+          // eslint-disable-next-line react/no-array-index-key
+          key={grp.title || index}
+          type="button"
+          role="tab"
+          aria-selected={step === index}
+          className={`viz-tab viz-step${step === index ? ' is-active' : ''}`}
+          onClick={() => setStep(index)}
+        >
+          <em>{String(index + 1).padStart(2, '0')}</em>
+          {grp.title}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const groupSections = schema?.groups.map((grp, index) => {
+    if (stepped && index !== step) return null;
+    const visible = grp.fields.filter((f) => isVisible(f, values));
+    if (!visible.length) return null;
+    return (
+      // eslint-disable-next-line react/no-array-index-key
+      <section
+        className={`viz-field-group${stepped ? ' is-step' : ''}`}
+        key={grp.title || index}
+        role={stepped ? 'tabpanel' : undefined}
+      >
+        {grp.title ? <h3>{grp.title}</h3> : null}
+        <div className="viz-field-grid">
+          {visible.map((field) => (
+            <FieldRenderer
+              key={field.name}
+              field={field}
+              values={values}
+              onChange={setValue}
+              columns={columns}
+              readOnly={readOnly}
+            />
+          ))}
+        </div>
+      </section>
+    );
+  });
+
   const descriptionRow = (
     <div className="viz-field is-full">
       <label className="viz-field-label" htmlFor="viz-block-desc">
@@ -379,42 +441,39 @@ export default function BlockSettingsDialog({
 
           <div className="viz-tabpanel" role="tabpanel">
             {showSettings ? (
-              <fieldset className="viz-form" disabled={readOnly}>
-                {labelRow}
-                {descriptionPlacement === 'top' ? descriptionRow : null}
+              stepped ? (
+                /*
+                 * The step strip has to sit outside the fieldset: a disabled
+                 * fieldset disables every control inside it, and a read-only
+                 * dialog still has to let you look at all five sections.
+                 */
+                <div className="viz-form">
+                  <fieldset className="viz-form-part" disabled={readOnly}>
+                    {labelRow}
+                    {descriptionPlacement === 'top' ? descriptionRow : null}
+                  </fieldset>
 
-                {!schema || unportedNote ? (
-                  <p className="viz-field-note">
-                    Edit this block on the Advanced tab.
-                  </p>
-                ) : null}
+                  {stepStrip}
 
-                {schema?.groups.map((grp, index) => {
-                  const visible = grp.fields.filter((f) => isVisible(f, values));
-                  if (!visible.length) return null;
-                  return (
-                    // Groups are static per schema.
-                    // eslint-disable-next-line react/no-array-index-key
-                    <section className="viz-field-group" key={grp.title || index}>
-                      {grp.title ? <h3>{grp.title}</h3> : null}
-                      <div className="viz-field-grid">
-                        {visible.map((field) => (
-                          <FieldRenderer
-                            key={field.name}
-                            field={field}
-                            values={values}
-                            onChange={setValue}
-                            columns={columns}
-                            readOnly={readOnly}
-                          />
-                        ))}
-                      </div>
-                    </section>
-                  );
-                })}
+                  <fieldset className="viz-form-part" disabled={readOnly}>
+                    {groupSections}
+                    {descriptionPlacement === 'bottom' ? descriptionRow : null}
+                  </fieldset>
+                </div>
+              ) : (
+                <fieldset className="viz-form" disabled={readOnly}>
+                  {labelRow}
+                  {descriptionPlacement === 'top' ? descriptionRow : null}
 
-                {descriptionPlacement === 'bottom' ? descriptionRow : null}
-              </fieldset>
+                  {!schema || unportedNote ? (
+                    <p className="viz-field-note">Edit this block on the Advanced tab.</p>
+                  ) : null}
+
+                  {groupSections}
+
+                  {descriptionPlacement === 'bottom' ? descriptionRow : null}
+                </fieldset>
+              )
             ) : null}
 
             {tab === 'mapping' && !singlePage ? (

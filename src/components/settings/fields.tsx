@@ -8,9 +8,10 @@ import {
 } from '@/api/lookups';
 import { errorText } from '@/api/http';
 import { PlusIcon, TrashIcon } from '../ui/icons';
-import { InlineError, Spinner } from '../ui/feedback';
+import { InlineError } from '../ui/feedback';
 import { AutocompleteInput } from '../ui/AutocompleteInput';
 import Select from '../ui/Select';
+import MultiSelect from '../ui/MultiSelect';
 import WorkflowPicker from '../ui/WorkflowPicker';
 import SkillsEditor, { SecretInput } from './SkillsEditor';
 import SqlQueryEditor from './SqlQueryEditor';
@@ -474,7 +475,8 @@ function RowsetEditor({
  * Multi-select over an app's spreadsheets, storing their short codes.
  *
  * The Agent Node keys its data access off short codes rather than sheet ids,
- * because that is what the MCP mirror tables are named after.
+ * because that is what the MCP mirror tables are named after — so the option
+ * value here is the short code, not the usual `dir_path`.
  */
 function SpreadsheetCodesEditor({
   appId,
@@ -487,59 +489,25 @@ function SpreadsheetCodesEditor({
 }) {
   const { options: sheets, busy, error } = useAsyncOptions(() => fetchSpreadsheets(appId), [appId]);
 
-  const withCodes = useMemo(() => sheets.filter((s) => s.shortCode), [sheets]);
-  const labels = useMemo(
-    () => new Map(withCodes.map((s) => [s.shortCode as string, s.label])),
-    [withCodes],
+  const choices = useMemo(
+    () => sheets.filter((s) => s.shortCode).map((s) => ({ value: s.shortCode as string, label: s.label })),
+    [sheets],
   );
 
-  const toggle = (code: string, on: boolean) =>
-    onChange(on ? [...value.filter((c) => c !== code), code] : value.filter((c) => c !== code));
-
   return (
-    <div className="viz-ss-codes">
-      <div className="viz-chips">
-        {value.length === 0 ? <span className="viz-chips-empty">No spreadsheets selected</span> : null}
-        {value.map((code) => (
-          <span className="viz-chip" key={code}>
-            {labels.get(code) || code}
-            <button type="button" aria-label={`Remove ${code}`} onClick={() => toggle(code, false)}>
-              ×
-            </button>
-          </span>
-        ))}
-      </div>
-
-      {!appId ? (
-        <p className="viz-field-help">Choose an app first.</p>
-      ) : busy ? (
-        <Spinner label="Loading spreadsheets…" />
-      ) : (
-        <div className="viz-ss-list">
-          {withCodes.length === 0 ? (
-            <p className="viz-field-help">This app has no spreadsheets.</p>
-          ) : (
-            withCodes.map((sheet) => {
-              const code = sheet.shortCode as string;
-              return (
-                <label className="viz-checkbox" key={sheet.value}>
-                  <input
-                    type="checkbox"
-                    checked={value.includes(code)}
-                    onChange={(e) => toggle(code, e.target.checked)}
-                  />
-                  <span>
-                    {sheet.label} <em className="viz-ss-code">{code}</em>
-                  </span>
-                </label>
-              );
-            })
-          )}
-        </div>
-      )}
-
+    <>
+      <MultiSelect
+        value={value}
+        options={choices}
+        onChange={onChange}
+        disabled={!appId || busy}
+        placeholder={!appId ? 'Choose an app first' : busy ? 'Loading spreadsheets…' : '- Select Spreadsheets -'}
+        searchPlaceholder="Filter spreadsheets…"
+        emptyText="This app has no spreadsheets."
+        aria-label="Spreadsheets"
+      />
       {error ? <InlineError>{error}</InlineError> : null}
-    </div>
+    </>
   );
 }
 

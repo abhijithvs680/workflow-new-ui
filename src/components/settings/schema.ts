@@ -163,6 +163,13 @@ export interface BlockSchema {
   /** Mirrors the layout template the classic dialog pairs this block with. */
   layout: BlockLayout;
   groups: FieldGroup[];
+  /**
+   * How the groups are presented. `stack` (the default) runs them down the
+   * dialog under their headings; `steps` puts them behind a numbered tab strip
+   * and shows one at a time, the way the Agent Node's classic dialog does — it
+   * has far too many fields to read as one column.
+   */
+  groupsAs?: 'stack' | 'steps';
   /** Values applied when a property is absent (i.e. a freshly added block). */
   defaults?: Values;
   /**

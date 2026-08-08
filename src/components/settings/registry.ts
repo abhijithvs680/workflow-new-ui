@@ -884,6 +884,7 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     title: 'Agent Node',
     summary: 'Calls an LLM and lets it use tools, workflows and messaging skills to finish the task.',
     layout: 'untabbed',
+    groupsAs: 'steps',
     groups: [
       group('Model', [
         select(
