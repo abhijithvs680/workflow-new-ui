@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PaletteGroup, PaletteItem } from '@/types/workflow';
+import type { ClipboardEntry } from '@/api/clipboard';
 import BlockIcon from './ui/BlockIcon';
 import { BlocksIcon, ChevronIcon, CloseIcon } from './ui/icons';
 import { EmptyState } from './ui/feedback';
@@ -15,6 +16,13 @@ interface PaletteProps {
   /** Set while "Add next" is waiting for a pick; the new block gets wired up. */
   pendingSourceId: string | null;
   onCancelPending: () => void;
+  /**
+   * Shared block clipboard, rendered as its own group — the classic palette's
+   * Clipboard accordion. Entries came from another canvas as often as this one.
+   */
+  clipboard?: ClipboardEntry[];
+  onPasteClipboard?: (entry: ClipboardEntry) => void;
+  onClearClipboard?: () => void;
 }
 
 /**
@@ -28,6 +36,9 @@ export default function Palette({
   onAdd,
   pendingSourceId,
   onCancelPending,
+  clipboard = [],
+  onPasteClipboard,
+  onClearClipboard,
 }: PaletteProps) {
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -109,6 +120,42 @@ export default function Palette({
       </div>
 
       <div className="viz-palette-list">
+        {/*
+          Clipboard first, as the classic palette does — it is what you reach
+          for right after copying, and it can hold blocks from another workflow.
+        */}
+        {clipboard.length && !searching ? (
+          <section className="viz-palette-group is-list-view viz-palette-clip">
+            <div className="viz-palette-group-head is-static">
+              <span>Clipboard</span>
+              <span className="viz-palette-group-count">{clipboard.length}</span>
+            </div>
+
+            <div className="viz-palette-items">
+              {clipboard.map((entry) => (
+                <button
+                  type="button"
+                  className="viz-palette-item"
+                  key={entry.clone_id}
+                  title={`Paste “${entry.label}”`}
+                  onClick={() => onPasteClipboard?.(entry)}
+                >
+                  <span className="viz-palette-icon">
+                    <BlockIcon iconPath={entry.iconPath} label={entry.label} fallback={entry.type} />
+                  </span>
+                  <span className="viz-palette-label">{entry.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="viz-palette-clip-foot">
+              <button type="button" className="viz-link-btn" onClick={() => onClearClipboard?.()}>
+                Clear all
+              </button>
+            </div>
+          </section>
+        ) : null}
+
         {filtered.length === 0 ? (
           <EmptyState>
             {total === 0

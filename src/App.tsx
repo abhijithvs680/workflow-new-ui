@@ -5,29 +5,10 @@ import { clearLookupCache } from './api/lookups';
 import { errorText, PlatformError } from './api/http';
 import type { BootData } from './types/workflow';
 import Studio from './Studio';
-import { FullPageError, FullPageLoader } from './components/ui/feedback';
+import { CanvasSkeleton, FullPageError } from './components/ui/feedback';
 
-/**
- * History routing.
- *
- * Reads the workflow id or short code from the URL path.
- * e.g., `/workflow/debugger/<workflowId-or-shortCode>`.
- *
- * A saved version is addressed with `?version=<versionId>` on that same path
- * rather than a deeper `/version/<id>` segment: the build ships no `.htaccess`
- * (see `scripts/deploy.mjs`), so any extra path segment would fall through to
- * the PHP router and 404 on reload.
- */
-function readRoute(): { param: string; versionId: string } {
-  let path = window.location.pathname;
-  const routeBase = '/workflow/debugger/';
-  if (path.startsWith(routeBase)) {
-    path = path.slice(routeBase.length);
-  }
-  path = path.replace(/^\/+/, '').replace(/\/+$/, '');
-  const versionId = new URLSearchParams(window.location.search).get('version') || '';
-  return { param: decodeURIComponent(path), versionId };
-}
+import { debuggerHref, go, readRoute, type Route } from './lib/routes';
+import WorkflowList from './components/WorkflowList';
 
 type State =
   | { status: 'idle' }
@@ -36,13 +17,17 @@ type State =
   | { status: 'error'; message: string; detail?: string };
 
 export default function App() {
-  const [route, setRoute] = useState(readRoute);
+  const [route, setRoute] = useState<Route>(readRoute);
   const [state, setState] = useState<State>({ status: 'idle' });
 
   useEffect(() => {
     const onLocationChange = () => setRoute(readRoute());
+    window.addEventListener('hashchange', onLocationChange);
     window.addEventListener('popstate', onLocationChange);
-    return () => window.removeEventListener('popstate', onLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', onLocationChange);
+      window.removeEventListener('popstate', onLocationChange);
+    };
   }, []);
 
   const load = useCallback(async (param: string, versionId: string) => {
@@ -65,16 +50,25 @@ export default function App() {
     }
   }, []);
 
+  const param = route.name === 'debugger' ? route.param : '';
+  const versionId = route.name === 'debugger' ? route.versionId : '';
+
   useEffect(() => {
-    void load(route.param, route.versionId);
-  }, [route.param, route.versionId, load]);
+    if (route.name !== 'debugger') return;
+    void load(param, versionId);
+  }, [route.name, param, versionId, load]);
+
+  // `#/list` is the landing route, and replaces the classic workflow.html page.
+  if (route.name === 'list') {
+    return <WorkflowList />;
+  }
 
   if (state.status === 'idle') {
     return <NoWorkflowSelected />;
   }
 
   if (state.status === 'loading') {
-    return <FullPageLoader message="Loading workflow…" />;
+    return <CanvasSkeleton />;
   }
 
   if (state.status === 'error') {
@@ -83,14 +77,18 @@ export default function App() {
         title="Could not open this workflow"
         message={state.message}
         detail={state.detail}
-        onRetry={() => void load(route.param, route.versionId)}
+        onRetry={() => void load(param, versionId)}
       />
     );
   }
 
   return (
     // Remount on workflow change so the canvas never mixes two graphs.
-    <Studio key={route.versionId || state.boot.workflowId} boot={state.boot} onReloadRequested={() => void load(route.param, route.versionId)} />
+    <Studio
+      key={versionId || state.boot.workflowId}
+      boot={state.boot}
+      onReloadRequested={() => void load(param, versionId)}
+    />
   );
 }
 
@@ -106,12 +104,7 @@ function NoWorkflowSelected() {
         onSubmit={(e) => {
           e.preventDefault();
           const id = value.trim();
-          if (id) {
-            const routeBase = '/workflow/debugger/';
-            const newPath = `${routeBase}${routeBase.endsWith('/') ? '' : '/'}${encodeURIComponent(id)}`;
-            window.history.pushState({}, '', newPath);
-            window.dispatchEvent(new Event('popstate'));
-          }
+          if (id) go(debuggerHref(id));
         }}
       >
         <input

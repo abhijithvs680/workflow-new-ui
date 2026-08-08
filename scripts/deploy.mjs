@@ -9,17 +9,17 @@
  *
  * The target may also come from VIZRU_WEBROOT.
  *
- * Layout produced (matches `base: '/workflow/debugger/dist/'` in vite.config):
+ * Layout produced (matches `base: '/workflow/dist/'` in vite.config):
  *
- *   v1-web-app/workflow/debugger/
- *     index.html          <- entry, referenced as /workflow/debugger/
- *     .htaccess           <- SPA fallback for history routing
- *     dist/assets/*       <- hashed JS/CSS, referenced as /workflow/debugger/dist/assets/*
+ *   v1-web-app/workflow/
+ *     .htaccess           <- rewrites every non-file request to dist/index.html
+ *     dist/index.html     <- the served document
+ *     dist/assets/*       <- hashed JS/CSS, referenced as /workflow/dist/assets/*
  *
- * index.html is deliberately lifted out of dist/ so the app answers at
- * `/workflow/debugger/` while its assets keep the `dist/` prefix the build
- * emits. Both copies are written; the nested one is harmless and keeps
- * `dist/index.html` self-consistent if it is ever opened directly.
+ * The entry point is no longer lifted out of dist/: the rewrite and
+ * DirectoryIndex both point at dist/index.html, so a second copy at the
+ * directory root would be dead weight that can drift out of sync. Routing is
+ * hash-based (/workflow/#/list), which the rewrite never sees.
  */
 import { cp, mkdir, rm, stat } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -56,21 +56,25 @@ if (!(await exists(resolve(webroot, 'index.php')))) {
   process.exit(1);
 }
 
-// Replace only our own directory — never touch anything else in the webroot.
-if (await exists(target)) await rm(target, { recursive: true, force: true });
-await mkdir(target, { recursive: true });
+// Replace only the build output. `/workflow/` itself is NOT wiped: the
+// `.htaccess` that makes this layout work lives there and is maintained by
+// hand, so blowing the directory away would take the routing with it.
+const distTarget = join(target, 'dist');
+if (await exists(distTarget)) await rm(distTarget, { recursive: true, force: true });
+await mkdir(distTarget, { recursive: true });
+await cp(dist, distTarget, { recursive: true });
 
-// Everything the build produced goes under dist/ …
-await cp(dist, join(target, 'dist'), { recursive: true });
-
-// … and the entry point plus the rewrite rules sit at the directory root, which
-// is the URL users actually visit.
-await cp(join(dist, 'index.html'), join(target, 'index.html'));
-if (await exists(join(dist, '.htaccess'))) {
-  await cp(join(dist, '.htaccess'), join(target, '.htaccess'));
-} else {
-  console.warn('WARNING: no .htaccess in the build — history routing will 404 on reload.');
+if (!(await exists(join(target, '.htaccess')))) {
+  console.warn(
+    `WARNING: no .htaccess at ${target}.\n` +
+      '         Without it /workflow/ will not resolve to dist/index.html. Expected:\n' +
+      '           RewriteEngine On\n' +
+      '           RewriteCond %{REQUEST_FILENAME} !-f\n' +
+      '           RewriteCond %{REQUEST_FILENAME} !-d\n' +
+      '           RewriteRule ^.*$ dist/index.html [L]\n' +
+      '           DirectoryIndex dist/index.html',
+  );
 }
 
-console.log(`Deployed ${dist}\n      -> ${target}`);
-console.log('Open: https://<host>/workflow/debugger/<workflowId-or-shortCode>');
+console.log(`Deployed ${dist}\n      -> ${distTarget}`);
+console.log('Open: https://<host>/workflow/#/list');

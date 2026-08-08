@@ -278,6 +278,9 @@ export function parseStoredProperties(html: string): Map<string, MongoWObject> {
 /* -------------------------------------------------------------------------- */
 
 const NUMERIC = /^\d+$/;
+/** A Mongo ObjectId: exactly 24 hex characters. A short code can also be 24
+ *  characters long, so length alone never distinguishes them. */
+const OBJECT_ID = /^[a-f0-9]{24}$/i;
 
 async function fetchShell(param: string): Promise<ShellInfo> {
   const html = await getHtml(`/workflow.debugger/${encodeURIComponent(param)}`);
@@ -286,7 +289,25 @@ async function fetchShell(param: string): Promise<ShellInfo> {
 
 /**
  * Load everything the canvas needs for `param`, which may be a Mongo id, a
- * short code, or an execution log id.
+ * short code, or an execution log id — all three keep working in the URL.
+ *
+ * What the URL accepts and what the controllers accept are two different
+ * things, so the boot payload carries **both** identifiers and each call site
+ * uses the one its endpoint expects:
+ *
+ *   id only        `workflow.save` — `new ObjectId($workflow_id)`
+ *   id only        `workflow.savesession`, `workflow.reactconnection` — these
+ *                  key into the PHP session bucket, which `Debugger.php` seeds
+ *                  under whatever parameter the shell was fetched with
+ *   short code     `workflow.version` (`short_code`)
+ *   short code     `workflow.settings/{sc}/json` — `loadWorkflowByShortcode`
+ *                  with no id fallback
+ *   either         `workflow.debugger`, `workflow.reactinfo`, `workflow.init`,
+ *                  `workflow.settings/{wid}`, `workflow.tags`
+ *
+ * The session-keyed group is why a short-code URL is resolved to the id and the
+ * shell re-fetched with it: the bucket holds the workflow's existing blocks, so
+ * writing under a different key would drop every edit to them at save time.
  */
 export async function loadWorkflow(param: string): Promise<BootData> {
   const trimmed = String(param || '').trim();
@@ -312,7 +333,7 @@ export async function loadWorkflow(param: string): Promise<BootData> {
     shell = await fetchShell(shell.workflowId);
   }
 
-  const { workflowId, shortCode } = shell;
+  let workflowId = shell.workflowId;
 
   const reactInfoHtml = await getHtml(`/workflow.reactinfo/${encodeURIComponent(workflowId)}`);
   let reactInfo: any = {};
@@ -322,10 +343,32 @@ export async function loadWorkflow(param: string): Promise<BootData> {
     // fallback if endpoint not deployed yet or returns error
     reactInfo = { blocks: [], connections: [] };
   }
-  
+
+  /**
+   * Normalise to the Mongo id.
+   *
+   * `Debugger.php` sets `vizWorkflow.id` to the **raw URL parameter**
+   * (`$workflowId = $param[0]`), so opening by short code leaves that id as the
+   * short code — and it then travels to `workflow.save` as `workflow_id`.
+   * `Save.php` guards with `strlen($savedWrkflwid) >= 24` before calling
+   * `new ObjectId(...)`, which a 24-character short code passes, so the save
+   * dies with "Error parsing ObjectId string".
+   *
+   * `Reactinfo` resolves either form to `(string) $wrkflwObj['_id']`, so take
+   * the id from there. The shell must then be re-fetched with it, because
+   * `Debugger.php` also seeds the PHP session under whatever param it was given
+   * (`session_set('workflow[' . $workflowId . ']', '')`) and every
+   * `savesession` write is keyed by the id the canvas posts.
+   */
+  const resolvedId = String(reactInfo.workflowId || '');
+  if (OBJECT_ID.test(resolvedId) && resolvedId !== workflowId) {
+    shell = await fetchShell(resolvedId);
+    workflowId = resolvedId;
+  }
+
+  const shortCode = String(reactInfo.shortCode || shell.shortCode || '');
   const blocks: SessionBlock[] = Array.isArray(reactInfo.blocks) ? reactInfo.blocks : [];
   const connections: SessionConnection[] = Array.isArray(reactInfo.connections) ? reactInfo.connections : [];
-
 
   return {
     workflowId,

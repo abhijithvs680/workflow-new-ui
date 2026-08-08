@@ -20,6 +20,7 @@ import 'reactflow/dist/style.css';
 import { errorText, platformMessages, platformSaveOk } from './api/http';
 import { reloadGraph } from './api/bootstrap';
 import { session } from './api/session';
+import { clipboardApi, type ClipboardEntry } from './api/clipboard';
 import { workflowApi } from './api/workflow';
 import { AutoSuggestionProvider } from './contexts/AutoSuggestionContext';
 import type { BootData, DebugData, PaletteItem, SessionConnection } from './types/workflow';
@@ -37,6 +38,7 @@ import {
 } from './graph/convert';
 import { layout } from './graph/autolayout';
 import { blockRunStatus } from './lib/runStatus';
+import { debuggerHref } from './lib/routes';
 
 import BlockNode, { nodeSkin } from './components/canvas/BlockNode';
 import VizEdge from './components/canvas/VizEdge';
@@ -48,23 +50,40 @@ import WorkflowSettings from './components/WorkflowSettings';
 import BlockSettingsDialog from './components/settings/BlockSettingsDialog';
 import { ToastStack, useToasts } from './components/ui/feedback';
 
+/**
+ * Block types `Autosuggestion.php` produces output fields for. Every other type
+ * returns an empty array, so they are never asked.
+ */
+const SUGGESTION_TYPES = new Set([
+  'arrayextract',
+  'date',
+  'getfiles',
+  'getuser',
+  'math',
+  'setvariable',
+  'ssadvdatafilter',
+  'ssautoincrementcol',
+  'ssdatafilter',
+  'string',
+]);
+
 const nodeTypes = { vizBlock: BlockNode };
 const edgeTypes = { vizEdge: VizEdge };
 
 // Keys match the `skin-*` classes from nodeSkin() / studio.css.
 const MINIMAP_COLORS: Record<string, string> = {
-  dark: '#1e293b',
-  condition: '#f97316',
-  output: '#0f172a',
-  sheet: '#16a34a',
-  filter: '#059669',
-  file: '#d97706',
-  math: '#7c3aed',
-  workflow: '#4f46e5',
-  action: '#2563eb',
-  ai: '#f97316',
-  custom: '#475569',
-  task: '#64748b',
+  dark: '#414b57',
+  condition: '#0f9d7a',
+  output: '#414b57',
+  sheet: '#0f9d7a',
+  filter: '#0f9d7a',
+  file: '#b45309',
+  math: '#6d28d9',
+  workflow: '#4338ca',
+  action: '#1d4ed8',
+  ai: '#b45309',
+  custom: '#6b6b75',
+  task: '#6b6b75',
 };
 
 interface StudioProps {
@@ -108,6 +127,10 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
   const [selectedEdge, setSelectedEdge] = useState<string | null>(null);
   const [pendingSourceId, setPendingSourceId] = useState<string | null>(null);
   const [canvasInteraction, setCanvasInteraction] = useState(0);
+  /** True between connect-start and connect-end, to widen every handle target. */
+  const [connecting, setConnecting] = useState(false);
+  /** Shared block clipboard, surfaced as a palette group. */
+  const [clipboard, setClipboard] = useState<ClipboardEntry[]>([]);
   const [run, setRun] = useState<DebugData | null>(null);
 
   const { toasts, notify, dismiss } = useToasts();
@@ -169,44 +192,91 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
     [notify, persist, requireEditing, selected, workflowId],
   );
 
-  const cloneNode = useCallback(
+  /**
+   * Copy a block to the shared clipboard — the classic "Add to Clipboard".
+   *
+   * One block per copy, because that is all the store holds: `Favourite.php`
+   * does `$data = json_decode($data)[0]`, keeping only the first element of
+   * whatever array it is posted. The entry is a *reference* to this block, so
+   * pasting elsewhere clones its properties across workflows.
+   */
+  const copyNodes = useCallback(
     async (blockId: string) => {
-      if (!requireEditing()) return;
-      const source = nodesRef.current.find((n) => n.id === blockId);
-      if (!source) return;
+      const node = nodesRef.current.find((n) => n.id === blockId);
+      if (!node) return;
 
-      const position = placeNear(source);
-      const newId = nextBlockId(nodesRef.current.map((n) => n.id), source.data.objId);
+      const entry: ClipboardEntry = {
+        source: workflowId,
+        obj_id: node.id,
+        type: node.data.blockType,
+        label: node.data.label,
+        iconPath: node.data.iconPath,
+        clone_id: `${workflowId}:${node.id}`,
+      };
+
+      try {
+        await clipboardApi.add([entry]);
+        setClipboard(await clipboardApi.list());
+        notify('Block copied. Open any workflow and paste it from Blocks.', 'success');
+      } catch (e) {
+        notify(errorText(e, 'Could not copy to the clipboard.'), 'error');
+      }
+    },
+    [notify, workflowId],
+  );
+
+  /**
+   * Paste a clipboard entry into this workflow.
+   *
+   * `objectInsert` with `blockOptr=clone` / `blockParent` / `clone_wf_id` is
+   * what carries the block's properties across from its origin workflow — the
+   * same path the classic canvas uses.
+   */
+  const pasteClipboard = useCallback(
+    async (entry: ClipboardEntry) => {
+      if (!requireEditing()) return;
+
+      const last = nodesRef.current[nodesRef.current.length - 1];
+      const position = last ? placeNear(last) : { x: 120, y: 120 };
+      const newId = nextBlockId(
+        nodesRef.current.map((n) => n.id),
+        entry.obj_id,
+      );
+
       const node: VizNode = {
         id: newId,
         type: 'vizBlock',
         position,
         data: {
-          ...source.data,
           blockId: newId,
-          label: `${source.data.label} copy`,
-          configured: false,
+          objId: entry.obj_id,
+          blockType: entry.type,
+          label: entry.label,
+          displayName: entry.label,
+          description: '',
+          iconPath: entry.iconPath,
+          isCondition: entry.type === 'condition',
           isEntry: false,
-          pendingSource: false,
-          debug: undefined,
+          configured: false,
         },
       };
 
       setNodes((list) => [...list, node]);
       setSelected(newId);
+
       await persist(
         () =>
           session.addBlock(workflowId, {
             blockId: newId,
-            objId: source.data.objId,
-            type: source.data.blockType,
-            iconPath: source.data.iconPath,
+            objId: entry.obj_id,
+            type: entry.type,
+            iconPath: entry.iconPath,
             x: position.x,
             y: position.y,
-            cloneFrom: source.id,
-            cloneWorkflowId: workflowId,
+            cloneFrom: entry.obj_id,
+            cloneWorkflowId: entry.source,
           }),
-        'Could not clone the block.',
+        'Could not paste the block.',
       );
     },
     [persist, requireEditing, workflowId],
@@ -223,7 +293,7 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
         return;
       }
       // History routing: the child opens at the app's own path, not a hash.
-      window.open(`/workflow/debugger/${encodeURIComponent(childId)}`, '_blank', 'noopener');
+      window.open(debuggerHref(childId), '_blank', 'noopener');
     },
     [notify],
   );
@@ -272,13 +342,13 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
           showDescription: showBlockInfo,
           onEdit: dimmed ? undefined : openSettings,
           onDelete: dimmed ? undefined : deleteNode,
-          onClone: dimmed ? undefined : cloneNode,
+          onCopy: dimmed ? undefined : copyNodes,
           onAddNext: dimmed ? undefined : addNext,
           onOpenChild: dimmed ? undefined : openChild,
         },
       };
     });
-  }, [nodes, edges, run, selected, editing, pendingSourceId, showBlockInfo, openSettings, deleteNode, cloneNode, addNext, openChild]);
+  }, [nodes, edges, run, selected, editing, pendingSourceId, showBlockInfo, openSettings, deleteNode, copyNodes, addNext, openChild]);
 
   const deleteEdge = useCallback(
     (edgeId: string) => {
@@ -598,23 +668,27 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
     setEditing(true);
     notify('Editing unlocked. Remember to save when you are done.');
     
-    // Fetch auto-suggestions for block fields
-    workflowApi
-      .getAutoSuggestions(workflowId)
-      .then((res) => {
-        const flat: string[] = [];
-        res.forEach((obj) => {
-          Object.entries(obj).forEach(([blockName, fields]) => {
-            fields.forEach((field) => {
-              flat.push(`{${blockName}.${field}}`);
-            });
+    // `workflow.autosuggestion` answers for one block at a time, so fan out over
+    // the blocks whose type it actually handles and merge. Asking about any
+    // other type is a guaranteed empty round-trip.
+    const asking = nodesRef.current.filter((n) => SUGGESTION_TYPES.has(n.data.blockType));
+    if (!asking.length) return;
+
+    void Promise.all(
+      asking.map((n) =>
+        workflowApi.getBlockSuggestions(workflowId, n.id).catch(() => [] as Record<string, string[]>[]),
+      ),
+    ).then((results) => {
+      const flat = new Set<string>();
+      results.flat().forEach((obj) => {
+        Object.entries(obj).forEach(([blockName, fields]) => {
+          (Array.isArray(fields) ? fields : []).forEach((field) => {
+            if (field) flat.add(`{${blockName}.${field}}`);
           });
         });
-        setAutoSuggestions(flat);
-      })
-      .catch((e) => {
-        console.error('Failed to load auto suggestions:', e);
       });
+      setAutoSuggestions([...flat]);
+    });
   }, [notify, workflowId]);
 
   const onFinishEdit = useCallback(async () => {
@@ -917,6 +991,8 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
             }}
           >
             <ReactFlow
+              // Widens every handle's hit area while a connection is in flight.
+              className={connecting ? 'is-connecting' : undefined}
               nodes={decoratedNodes}
               edges={decoratedEdges}
               nodeTypes={nodeTypes}
@@ -927,6 +1003,8 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
               onNodesDelete={onNodesDelete}
               onEdgesDelete={onEdgesDelete}
               onConnect={onConnect}
+              onConnectStart={() => setConnecting(true)}
+              onConnectEnd={() => setConnecting(false)}
               onNodeDragStart={onNodeDragStart}
               onNodeDragStop={onNodeDragStop}
               onNodeClick={(_e, node) => {
@@ -966,7 +1044,7 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
               fitViewOptions={{ padding: 0.18, maxZoom: 1.2 }}
               proOptions={{ hideAttribution: true }}
             >
-              <Background gap={22} size={1.2} color="#d5dbe5" variant={BackgroundVariant.Dots} />
+              <Background gap={16} size={1} color="var(--canvas-dot)" variant={BackgroundVariant.Dots} />
               <Controls showInteractive={false} position="bottom-right" />
               <MiniMap
                 pannable
@@ -1006,6 +1084,14 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
             onAdd={onPaletteAdd}
             pendingSourceId={pendingSourceId}
             onCancelPending={() => setPendingSourceId(null)}
+            clipboard={clipboard}
+            onPasteClipboard={(entry) => void pasteClipboard(entry)}
+            onClearClipboard={() => {
+              void clipboardApi
+                .clear()
+                .then(() => setClipboard([]))
+                .catch((e) => notify(errorText(e, 'Could not clear the clipboard.'), 'error'));
+            }}
           />
         </div>
 

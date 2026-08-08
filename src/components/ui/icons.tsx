@@ -185,3 +185,21 @@ export function initials(label?: string, fallback = '?'): string {
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
   return src.slice(0, 2).toUpperCase();
 }
+
+/** Trigger marker, as n8n places beside the left edge of a trigger node. */
+export function BoltIcon({ size = 13 }: SizeProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true">
+      <path fill="currentColor" d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5z" />
+    </svg>
+  );
+}
+
+export function SearchIcon({ size = 14 }: SizeProps) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-3.5-3.5" />
+    </svg>
+  );
+}

@@ -10,18 +10,6 @@ function pad(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-/**
- * URL for the read-only canvas of a saved version.
- *
- * A query parameter rather than a `/version/<id>` path segment: the build ships
- * no `.htaccess` (see `scripts/deploy.mjs`), so a deeper path would fall through
- * to the PHP router and 404 on reload. Lives here rather than in `App.tsx` to
- * keep `App → Studio → WorkflowSettings` from importing back into `App`.
- */
-export function versionHref(param: string, versionId: string): string {
-  return `/workflow/debugger/${encodeURIComponent(param)}?version=${encodeURIComponent(versionId)}`;
-}
-
 /** `MM-DD-YYYY HH:mm:ss`, matching the classic settings panel. */
 export function formatVersionStamp(unixSeconds: number): string {
   if (!unixSeconds) return 'Unknown date';

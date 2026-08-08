@@ -15,7 +15,8 @@ import Modal from './ui/Modal';
 import Select from './ui/Select';
 import { EmptyState, InlineError, Spinner } from './ui/feedback';
 import { PlusIcon, TrashIcon } from './ui/icons';
-import { formatVersionStamp, versionHref } from '@/lib/versions';
+import { formatVersionStamp } from '@/lib/versions';
+import { versionHref } from '@/lib/routes';
 
 interface Props {
   workflowId: string;
@@ -399,7 +400,6 @@ export default function WorkflowSettings({
       {/* Docked right at full height, as the classic settings sidebar is. */}
       <Modal
         title="Settings"
-        subtitle={workflowName ? `(${workflowName})` : shortCode ? `(${shortCode})` : undefined}
         size="sm"
         placement="right"
         onClose={onClose}

@@ -117,3 +117,104 @@ export function InlineError({ children }: { children: ReactNode }) {
 export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="viz-empty">{children}</p>;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Skeletons                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A shimmering placeholder block. Skeletons stand in for a spinner because they
+ * show the shape of what is coming, so the layout does not jump when the data
+ * lands.
+ */
+export function Skeleton({
+  width,
+  height,
+  radius,
+}: {
+  width?: number | string;
+  height?: number | string;
+  radius?: number | string;
+}) {
+  return (
+    <span
+      className="viz-skel"
+      style={{ width, height, borderRadius: radius }}
+      aria-hidden="true"
+    />
+  );
+}
+
+/** Placeholder for the workflow list: rail entries plus grouped rows. */
+export function ListSkeleton() {
+  return (
+    <div className="viz-wl" aria-busy="true" aria-label="Loading workflows">
+      <header className="viz-wl-top">
+        <Skeleton width={92} height={18} />
+        <span style={{ marginLeft: 'auto' }}>
+          <Skeleton width={320} height={34} radius={4} />
+        </span>
+        <Skeleton width={80} height={32} radius={4} />
+      </header>
+
+      <div className="viz-wl-body">
+        <aside className="viz-wl-rail">
+          <div className="viz-wl-rail-head">
+            <Skeleton width={96} height={16} />
+          </div>
+          <div className="viz-wl-rail-list">
+            {Array.from({ length: 9 }, (_, i) => (
+              <div className="viz-skel-rail-item" key={i}>
+                <Skeleton width={`${55 + ((i * 13) % 35)}%`} height={13} />
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className="viz-wl-main">
+          <div className="viz-wl-main-head">
+            <Skeleton width={190} height={22} />
+          </div>
+          <div className="viz-skel-rows">
+            {Array.from({ length: 10 }, (_, i) => (
+              <div className="viz-skel-row" key={i}>
+                <Skeleton width={`${32 + ((i * 17) % 40)}%`} height={14} />
+              </div>
+            ))}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/** Placeholder for the canvas: a toolbar bar and a few block-shaped tiles. */
+export function CanvasSkeleton() {
+  const spots = [
+    { top: 18, left: 8 },
+    { top: 18, left: 26 },
+    { top: 18, left: 44 },
+    { top: 46, left: 35 },
+    { top: 46, left: 53 },
+    { top: 30, left: 68 },
+  ];
+  return (
+    <div className="viz-skel-canvas" aria-busy="true" aria-label="Loading workflow">
+      <div className="viz-skel-toolbar">
+        <Skeleton width={180} height={20} />
+        <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <Skeleton width={72} height={32} radius={4} />
+          <Skeleton width={72} height={32} radius={4} />
+        </span>
+      </div>
+      <div className="viz-skel-stage">
+        {spots.map((p, i) => (
+          <div className="viz-skel-node" key={i} style={{ top: `${p.top}%`, left: `${p.left}%` }}>
+            <Skeleton width={96} height={96} radius={8} />
+            <Skeleton width={70} height={11} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}

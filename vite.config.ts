@@ -3,12 +3,21 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
 /**
- * The app is hosted as plain static files inside the platform document root at
- * `v1-web-app/workflow/debugger/`. Apache's rewrite only forwards to index.php
- * when the request does not resolve to a real file or directory, so no PHP
- * change is needed — but every asset URL must be prefixed with that directory.
+ * The app is hosted as plain static files at `v1-web-app/workflow/`, whose own
+ * `.htaccess` sends anything that is not a real file to `dist/index.html`:
+ *
+ *   RewriteCond %{REQUEST_FILENAME} !-f
+ *   RewriteCond %{REQUEST_FILENAME} !-d
+ *   RewriteRule ^.*$ dist/index.html [L]
+ *   DirectoryIndex dist/index.html
+ *
+ * So the served document lives one level down, and every asset URL has to be
+ * absolute against `/workflow/dist/` — a relative base would resolve against
+ * whatever path the user happened to land on. Routing is hash-based
+ * (`/workflow/#/list`), which the rewrite never sees.
  */
-export const APP_BASE = '/workflow/debugger/';
+export const APP_BASE = '/workflow/';
+const BUILD_BASE = '/workflow/dist/';
 
 /**
  * Platform prefixes the dev server must forward so the browser stays
@@ -41,11 +50,28 @@ function platformProxy(target: string): Record<string, ProxyOptions> {
   const rules: Record<string, ProxyOptions> = {};
   for (const prefix of PLATFORM_PREFIXES) {
     rules[prefix] = prefix === '/workflow/'
-      // The app's own base sits under /workflow/ — serve those from Vite.
-      ? { ...base, bypass: (req) => (req.url?.startsWith(APP_BASE) ? req.url : undefined) }
+      // The app base is now `/workflow/` itself, so "starts with the base" no
+      // longer separates app from platform. The platform's own endpoints under
+      // this prefix are all `<name>.<action>` in the first segment
+      // (`log.debugdata`, `connection.properties`); everything else — the shell,
+      // `dist/`, and Vite's `@vite` / `@react-refresh` / `src` dev routes —
+      // belongs to the app and is served locally.
+      ? { ...base, bypass: (req) => (isPlatformPath(req.url || '') ? undefined : req.url) }
       : base;
   }
   return rules;
+}
+
+/** Static files the dev server owns even though their names contain a dot. */
+const STATIC_EXT = /\.(html|js|mjs|css|map|ico|svg|png|jpe?g|gif|woff2?|ttf|json)$/i;
+
+/** True for `/workflow/<name>.<action>` — a platform controller path. */
+function isPlatformPath(url: string): boolean {
+  const rest = url.slice(APP_BASE.length).split(/[?#]/)[0];
+  const first = rest.split('/')[0];
+  if (!first.includes('.')) return false;
+  if (first.startsWith('@')) return false;
+  return !STATIC_EXT.test(first);
 }
 
 export default defineConfig(({ mode }) => {
@@ -54,7 +80,7 @@ export default defineConfig(({ mode }) => {
   const outDir = env.VIZRU_OUT_DIR || 'dist';
 
   return {
-    base: mode === 'development' ? APP_BASE : '/workflow/debugger/dist/',
+    base: mode === 'development' ? APP_BASE : BUILD_BASE,
     plugins: [react()],
     resolve: {
       alias: {

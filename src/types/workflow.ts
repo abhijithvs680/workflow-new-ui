@@ -123,7 +123,7 @@ export interface BlockNodeData {
   showDescription?: boolean;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
-  onClone?: (id: string) => void;
+  onCopy?: (id: string) => void;
   onAddNext?: (id: string) => void;
   onOpenChild?: (id: string) => void;
 }

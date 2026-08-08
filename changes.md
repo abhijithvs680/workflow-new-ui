@@ -267,6 +267,287 @@ Swapped everywhere: schema selects, app/spreadsheet/document pickers, row-set
 cells, the filter operator, the connection-mapping target and Mail From, the
 settings drawer's app and hour pickers, and the recent-logs page size.
 
+## 11. Corporate design-system pass
+
+A visual-layer-only refinement of the existing light theme — no TSX structure
+changes, no new endpoints. `index.css` only.
+
+**Tokens.** Added a type scale (11 / 12.5 / 14 / 16 / 20), a 4px spacing scale,
+and a single `--focus-ring`. Elevation was pulled back — enterprise surfaces
+should read as paper on a desk, not floating glass — so each step is a tight
+ambient shadow (`0 2px 8px / 8%`) rather than a large diffuse one
+(`0 4px 14px / 10%`), and corner radii dropped a step.
+
+**Typography.** Every `font-size` now resolves to the scale; there were twelve
+ad-hoc sizes between 10px and 19px across 59 declarations. The base stays at
+~13px so control heights and the 220px node width are unaffected — this is a
+visual pass, not a density change.
+
+**Contrast.** The ink ramp was re-cut so every step used for text clears WCAG AA
+on `--surface`. `--ink-400` was `#8d95a3` at **3.0:1** — below AA, and it is the
+placeholder colour. Measured on rendered elements:
+
+| Token | Ratio |
+|---|---|
+| ink-900 / 800 / 700 | 18.6 · 15.5 · 12.1 |
+| ink-600 / 500 / 400 | 8.4 · 5.9 · **4.5** |
+| ink-300 | 2.6 — strokes and disabled glyphs only, never text |
+
+**Node palette.** Entry and output keep the classic dark navy; they are the
+terminals and reading them as solid blocks is the point. Every other family
+moved to a plain white surface — a canvas of pastel tints becomes a rainbow at
+any real workflow size. Family identity is carried by one saturated accent
+instead: the icon badge, plus the silhouette and edge rule from §10. Badge
+colours were darkened so white glyphs clear AA on all of them (lowest 4.76:1),
+and node label/type measure 18.6:1 / 5.9:1 on light families and 12.1:1 / 4.9:1
+on the dark terminals.
+
+## 12. n8n design system (light)
+
+Re-based the UI on n8n's light design language. **Block config modals were not
+touched** — no diff in `registry.ts`, `schema.ts` or `BlockSettingsDialog.tsx`,
+and none of the field-grid / half-row / filter-row / sort-row rules changed, so
+the legacy field arrangement from §7–§9 is intact.
+
+**Tokens.** Ink ramp re-cut onto n8n's text scale (`#525252` → `#909399`),
+foreground hairlines to `#dbdfe7`, canvas to `#fafafa` with a 16px dot grid,
+radii to 4 / 6 / 8, and near-flat elevation. The platform primary `#003EAA` is
+**kept** for actions rather than adopting n8n's brand coral — swapping a
+product's brand colour for a competitor's seemed like the wrong default, and
+the reference screenshot is neutral anyway. Say the word to switch.
+
+**Canvas.** Nodes are now n8n-style: a 96×96 white square holding only the
+glyph, with the name and subtitle rendered *below* the card. The caption is
+absolutely positioned so the React Flow node box stays 96×96 — otherwise the
+left/right handles would centre on the card plus its text. Triggers round their
+leading edge and carry the coral lightning marker; handles are small grey dots;
+an unconnected output gets n8n's persistent lead-line-plus-square stub.
+Condition nodes keep the same footprint and stack **true** / **false** on the
+right edge, which is both what n8n does and what stops the second label
+colliding with the caption underneath.
+
+The per-family silhouettes from §10 are gone: n8n uses one shape and lets the
+glyph carry identity, so family colour moved onto the icon and the tinted cards
+went white.
+
+**Icon badges.** Moving the family colour onto the glyph made every icon vanish:
+the platform ships its block icons as **white** theme SVGs, drawn to sit on a
+coloured badge. So the family colour lives on a 46px rounded badge behind the
+glyph instead — which is also how n8n reads, a colourful mark centred in a white
+square. White-on-badge measures 5.0–8.9:1.
+
+**Condition.** Back to a diamond, wearing the current theme: flat teal fill, no
+gradient or drop shadow, on a transparent 96×96 card so it still lines up in a
+row with every other node.
+
+**Settings drawer.** Weights dropped from 700 to 600, the action row moved off
+the monospace face onto `--font`, the history strip lightened, and
+`font-family: var(--font)` pinned on `.viz-modal` so no part of a portalled
+dialog can fall back to a UA font.
+
+**Contrast.** Re-measured on rendered elements; three failures found and fixed:
+the node subtitle was on `--ink-300` at **2.08:1** (violating the "never for
+text" rule that token documents), the teal glyph was **3.43:1**, and the branch
+labels **4.31:1** on the canvas tint. Now: label 7.5 · subtitle 5.1 ·
+branch labels 5.3 · glyphs 5.1–8.9.
+
+## 13. Hosting at /workflow, hash routing, and the #/list route
+
+**Hosting.** The app now lives at `v1-web-app/workflow/`, whose `.htaccess`
+rewrites every non-file request to `dist/index.html`. Vite's build `base` is
+`/workflow/dist/` so asset URLs are absolute — a relative base would resolve
+against whatever route the user landed on. Verified in the built `index.html`:
+all four assets emit as `/workflow/dist/assets/...`.
+
+**Routing is hash-based** (`lib/routes.ts`):
+
+| Route | Shows |
+|---|---|
+| `#/list` | workflow list (also the landing route) |
+| `#/debugger/<id-or-shortCode>` | the canvas |
+| `#/debugger/<id>?version=<vid>` | read-only canvas for a saved version |
+
+Apache never sees the hash, so every route reloads cleanly and adding one needs
+no server change. All link builders (`Toolbar`, `Studio`'s open-child,
+`WorkflowSettings`' version links, the open form) now go through
+`debuggerHref` / `versionHref` rather than hand-built paths.
+
+The dev proxy needed rethinking: with `APP_BASE` now `/workflow/`, "starts with
+the base" no longer separates app from platform. Platform endpoints under that
+prefix are all `<name>.<action>` in the first segment (`log.debugdata`,
+`connection.properties`), so `isPlatformPath()` proxies those and serves
+everything else — the shell, `dist/`, and Vite's `@vite` / `src` dev routes —
+locally.
+
+**`deploy.mjs`** now replaces only `workflow/dist/` and no longer lifts
+`index.html` to the directory root. It deliberately does *not* wipe
+`/workflow/`: the `.htaccess` that makes the layout work lives there and is
+maintained by hand. It warns, with the expected rules, when that file is missing.
+
+## 14. Workflow list (`#/list`)
+
+Replaces the classic `workflow.html`, fed by the existing `workflow.all`
+controller. Two properties of that endpoint drove the design:
+
+- It reads filters from `php://input`, so the request needs a **real JSON body**
+  — a form-encoded post arrives as `null`. Added `postJsonBody` for this; the
+  reply is bare JSON (`echo` + `exit`), with no platform envelope.
+- **It has no pagination.** It returns every workflow in one array, doing a tag
+  lookup plus one or two user lookups per row on the way.
+
+**Arrangement** follows the classic page: a "List by app" rail on the left
+(Recent Workflows first, then one entry per connected app with a count), and a
+single-column list of full-width rows on the right — name on the left, chevron
+on the right, with the row's actions and a floating last-action card (Last
+action by / date / Owner / short code) revealed on hover, plus a create FAB.
+The styling is the new UI's, not the classic magenta. App buckets are derived
+from the rows already loaded rather than a second request, since the response
+carries each workflow's connected apps.
+
+The hover card is portalled and fixed-positioned from the row's rect: the scroll
+container clips on both axes, so a card rendered inside a row would be cut off
+near the edges — and it flips above the row when it would run off the bottom of
+the viewport.
+
+Delete is deliberately **not** wired. The response carries a signed `DeleteUrl`
+into the generic datagrid action endpoint (`datatable.an/delete/` with a
+`doListAction` callback), whose POST shape — the `$pAn` / `$pSeln` selection
+contract — would have been guesswork. Shipping an untested destructive call was
+not worth it; the row actions are open-in-new-tab and copy-short-code.
+
+So the response is fetched once and everything after — search, filter, sort — is
+client-side, and the list is **windowed**: a full-height spacer drives the
+scrollbar while only the rows in the scrollport (plus 8 overscan) are rendered.
+The DOM stays flat regardless of tenant size — measured 27–35 rows at 50, 1 000,
+5 000 and 25 000 workflows, with the spacer at 1.1M px for the largest, well
+inside browser limits.
+
+## 15. `workflow.save` — "Error parsing ObjectId string"
+
+Saving failed with `Error parsing ObjectId string: newsubagent6a6c4c28390bc`.
+That is a **short code** reaching a field that requires a Mongo id, and the
+chain is:
+
+1. `Debugger.php` sets `$workflowId = $param[0]` — the raw URL parameter — so
+   opening `/workflow.debugger/<shortCode>` renders
+   `vizWorkflow.id = "<shortCode>"`.
+2. The canvas reads that into `boot.workflowId` and posts it to `workflow.save`
+   as `workflow_id`.
+3. `Save.php` decides whether it has an id by **length**:
+   `if (strlen($savedWrkflwid) >= 24)` before `new ObjectId($savedWrkflwid)`.
+   `newsubagent6a6c4c28390bc` is exactly 24 characters, so it passes the guard
+   and the constructor throws.
+
+Both URL forms still work — a short code, an id, or an execution log id all
+open. What changed is that the boot payload now carries **both** identifiers and
+each call site uses the one its controller expects:
+
+| Endpoint | Expects |
+|---|---|
+| `workflow.save` | **id** — `new ObjectId($workflow_id)` |
+| `workflow.savesession`, `workflow.reactconnection` | **id** — these key into the PHP session bucket |
+| `workflow.version` | **short code** (`short_code`) |
+| `workflow.settings/{sc}/json` | **short code** — `loadWorkflowByShortcode`, no id fallback |
+| `workflow.debugger`, `workflow.reactinfo`, `workflow.init`, `workflow.settings/{wid}`, `workflow.tags` | either |
+
+Fixed on the client, in two places:
+
+- **`loadWorkflow` now normalises to the Mongo id.** `Reactinfo` resolves either
+  form to `(string) $wrkflwObj['_id']`, so the id is taken from there; when it
+  differs from the parameter the shell is re-fetched with it, because
+  `Debugger.php` also seeds the PHP session under whatever param it was given
+  (`session_set('workflow[' . $workflowId . ']', '')`) and every `savesession`
+  write is keyed by the id the canvas posts. That bucket holds the workflow's
+  **existing** blocks, so writing under a different key would silently drop
+  every edit to them at save time — which is why the re-fetch is not optional.
+  Detection uses `/^[a-f0-9]{24}$/`; length alone cannot tell the two apart,
+  which is the whole bug.
+- **The `#/list` rows link by `r.id`**, not `r.shortCode || r.id`, so the common
+  path never puts a short code in the URL to begin with.
+
+The underlying `Save.php` length check is still fragile for anything that
+reaches it by another route; hardening it is a PHP change and was left alone.
+
+## 16. Block clipboard, skeletons, scrollbars
+
+**No legacy change.** Everything below uses endpoints the platform already
+exposes; `git status` on `v1-web-app` is clean.
+
+**Copy / paste across workflows.** The block action is now **Copy**, not Clone,
+and writes to the classic shared clipboard —
+`/workflow.favourite {mode:'insert'|'list'|'delete', type:'clipboard'}`. An
+entry is a *reference* (`{source, obj_id}`) to a block still living in its
+origin workflow, which is why pasting can carry its properties across:
+`objectInsert` with `blockOptr=clone`, `blockParent`, `clone_wf_id` — the shape
+`session.addBlock` already spoke.
+
+Copying with a multi-block selection also records, per entry, its offset from
+the selection's top-left and the `obj_id`s it feeds **inside the selection**.
+Paste then inserts the blocks, maps old ids to new, and replays those links with
+`connectionInsert`, so the sub-graph is rebuilt rather than dropped as loose
+blocks. Links whose other end was not copied are deliberately not recorded —
+there is nothing to reconnect them to. Verified on a 5-node graph: relative
+offsets preserved, all three internal links rebuilt with the right branch
+(plain / yes / no), and the edge to the unselected block dropped.
+
+The palette gained a **Clipboard** group, as the classic one has: paste a single
+entry, "Paste all N blocks (with connections)", or Clear all. It is fetched per
+canvas rather than carried in the boot payload, because the clipboard is shared
+across workflows.
+
+Note the platform's own staleness rule applies: `Favourite::listClipboard()`
+drops entries whose source block no longer exists, so deleting a copied block
+empties it from the clipboard.
+
+**Skeletons** replace the spinners on both routes — a canvas placeholder with
+block-shaped tiles, and a list placeholder with rail and row shapes — so the
+layout does not jump when data lands.
+
+**Scrollbars** are thin (8px), transparent-tracked and light-thumbed app-wide,
+with a lighter thumb inside the dark debug dock and 6px on the palette, rail and
+dropdown panels.
+
+**"List by app"** is a plain heading again; the collapse toggle is gone.
+
+## 17. Endpoint contract fixes
+
+**`workflow.autosuggestion` was silently returning nothing.** Three mismatches,
+none of them id-vs-shortcode:
+
+1. We posted `workflow_id`; the controller reads `post('workflowId')`. The
+   camelCase name is what it wants, so the id arrived empty and the
+   `array_key_exists($workflowId, $wrkflow_session)` guard never passed.
+2. It answers for **one block** (`if ($con['blockId'] == $block_id)`) and needs
+   `blockid`, which we never sent. The canvas now fans out one call per block,
+   restricted to the ten types the controller actually handles (`setvariable`,
+   `ssdatafilter`, `date`, `math`, `string`, `arrayextract`, `getfiles`,
+   `getuser`, `ssadvdatafilter`, `ssautoincrementcol`) — every other type is a
+   guaranteed empty round-trip.
+3. It `echo`es a bare JSON array and exits. We were reading `data.Result`, which
+   does not exist on that reply.
+
+Audited the other endpoints for the same class of bug: `workflow.tags`
+(`mode`/`tag_type`/`obj_id`), `workflow.reusables` (`inputdata`/`key`),
+`workflow.version` (`type`/`short_code`/`vid`/`note`) and `workflow.favourite`
+(`mode`/`type`/`data`) all match what their controllers read.
+
+**`workflow.all` no longer sends a body** when no filter is set — the controller
+only does `isset()` checks on the decoded input.
+
+**`/workflow.debugger/{id}` is still required.** `Debugger.php:225-242` is the
+only code that loads a workflow into the PHP session
+(`$wrkflow_session[$workflowId] = $workflowObj`). `Reactinfo` reads Mongo without
+touching the session, and `Savesession` only mutates a bucket that already
+exists. Drop the shell fetch and `savesession` writes would land in an empty
+bucket — `workflow.save` would then commit a workflow with only the newly added
+blocks — plus autosuggestion and the palette would go dark.
+
+**Clipboard is one block per copy.** `Favourite.php` does
+`$data = json_decode($data)[0]`, keeping only the first element of the posted
+array, so a multi-block copy could never have persisted through it. Copy now
+sends exactly one entry, the "Paste all" control is gone, and the group is
+styled as a normal palette group with its own heading and a Clear all footer.
+
 ### Deployment note
 
 The running container mounts `Vizru-Docker/receiver/volumes/web/app-live/v1-web-app`

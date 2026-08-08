@@ -2,7 +2,7 @@ import { memo } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import type { BlockNodeData } from '@/types/workflow';
 import BlockIcon from '../ui/BlockIcon';
-import { CopyIcon, ExternalIcon, PencilIcon, PlusIcon, TrashIcon } from '../ui/icons';
+import { BoltIcon, CopyIcon, ExternalIcon, PencilIcon, PlusIcon, TrashIcon } from '../ui/icons';
 
 /**
  * Visual family per block type, so a large workflow reads as groups rather
@@ -90,7 +90,7 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
     hasOutgoing,
     onEdit,
     onDelete,
-    onClone,
+    onCopy,
     onAddNext,
     onOpenChild,
   } = data;
@@ -125,9 +125,15 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
           <span>Add</span>
         </button>
       )}
-      <button type="button" title="Clone block" onClick={() => onClone?.(id)}>
+      {/* Copy puts the block on the shared clipboard, so it can be pasted into
+          this or any other workflow — the classic "Add to Clipboard". */}
+      <button
+        type="button"
+        title="Copy to clipboard (also copies the whole selection)"
+        onClick={() => onCopy?.(id)}
+      >
         <CopyIcon />
-        <span>Clone</span>
+        <span>Copy</span>
       </button>
       {isChild && (
         <button type="button" title="Open child workflow" onClick={() => onOpenChild?.(id)}>
@@ -158,9 +164,6 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
     return (
       <div className={classes.join(' ')} title={description || label} onDoubleClick={openOnDoubleClick}>
         {actions}
-        <div className="viz-cond-label">
-          <span className="viz-node-label">{label}</span>
-        </div>
         <div className="viz-cond-body">
           <Handle id="in" type="target" position={Position.Left} className="viz-handle viz-handle-in" />
           <div className="viz-cond-diamond" aria-hidden="true">
@@ -168,6 +171,11 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
               <BlockIcon iconPath={iconPath} label={label} fallback={blockType} />
             </span>
           </div>
+          {/*
+            Yes leaves the right point of the diamond, No the bottom one. The
+            branch names are drawn on the connections themselves, so the node
+            prints nothing next to its handles.
+          */}
           <Handle
             id="yes"
             type="source"
@@ -182,8 +190,9 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
             className="viz-handle viz-handle-no"
             title="No branch"
           />
-          <span className="viz-cond-branch viz-cond-branch-yes">Yes</span>
-          <span className="viz-cond-branch viz-cond-branch-no">No</span>
+        </div>
+        <div className="viz-node-caption">
+          <span className="viz-node-label">{label}</span>
         </div>
         {notConfigured}
       </div>
@@ -194,26 +203,37 @@ function BlockNode({ id, data, selected }: NodeProps<BlockNodeData>) {
     <div className={classes.join(' ')} title={description || label} onDoubleClick={openOnDoubleClick}>
       {actions}
 
-      {!isEntry && (
+      {isEntry ? (
+        <span className="viz-node-bolt" aria-hidden="true" title="Trigger">
+          <BoltIcon />
+        </span>
+      ) : (
         <Handle id="in" type="target" position={Position.Left} className="viz-handle viz-handle-in" />
       )}
 
+      {/*
+        n8n renders the node as an icon-only square with its name *below* the
+        card. The caption is absolutely positioned so the React Flow node box
+        stays the size of the square — otherwise the left/right handles would
+        centre on the card plus the text instead of on the card.
+      */}
       <div className="viz-node-body">
         <span className="viz-node-icon">
           <BlockIcon iconPath={iconPath} label={label} fallback={blockType} />
-        </span>
-        <span className="viz-node-text">
-          <span className="viz-node-label">{label}</span>
-          <span className="viz-node-type">{displayName || blockType}</span>
-          {data.showDescription && description ? (
-            <span className="viz-node-desc">{description}</span>
-          ) : null}
         </span>
         {notConfigured}
         {data.debug?.executionTime ? (
           <span className="viz-node-time" title="Execution time">
             {data.debug.executionTime}s
           </span>
+        ) : null}
+      </div>
+
+      <div className="viz-node-caption">
+        <span className="viz-node-label">{label}</span>
+        <span className="viz-node-type">{displayName || blockType}</span>
+        {data.showDescription && description ? (
+          <span className="viz-node-desc">{description}</span>
         ) : null}
       </div>
 

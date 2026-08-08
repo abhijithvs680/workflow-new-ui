@@ -1,5 +1,6 @@
 import RecentLogs from './RecentLogs';
 import { formatVersionStamp } from '@/lib/versions';
+import { debuggerHref } from '@/lib/routes';
 import {
   CheckIcon,
   CogIcon,
@@ -84,7 +85,7 @@ export default function Toolbar(props: ToolbarProps) {
             {version.parentWorkflowId ? (
               <a
                 className="viz-btn is-primary"
-                href={`/workflow/debugger/${encodeURIComponent(version.parentWorkflowId)}`}
+                href={debuggerHref(version.parentWorkflowId)}
               >
                 Back to workflow
               </a>

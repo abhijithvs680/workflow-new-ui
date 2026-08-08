@@ -35,13 +35,30 @@ export const workflowApi = {
   },
 
   /**
-   * Fetch auto-suggestions for block input fields in edit mode.
+   * Auto-suggestions for one block's outputs, e.g. `{Filter: ['email','name']}`.
+   *
+   * Three things about `Autosuggestion.php` shape this:
+   *
+   *  - It reads `post('workflowId')` and `post('blockid')` — **not**
+   *    `workflow_id`. Sending the snake_case name leaves both empty and the
+   *    controller returns nothing at all, silently.
+   *  - It answers for a **single block** (`if ($con['blockId'] == $block_id)`),
+   *    so a whole-workflow list means one call per block.
+   *  - It `echo`es a bare JSON array and exits — there is no platform envelope,
+   *    so nothing is nested under `Result`.
+   *
+   * It reads the block out of `session('workflow')[$workflowId]`, so the id must
+   * be the one the session is keyed by — the Mongo id the canvas booted with.
    */
-  async getAutoSuggestions(workflowId: string): Promise<Record<string, string[]>[]> {
-    const data = await postJson<{ Result: Record<string, string[]>[] }>('/workflow.autosuggestion', {
-      workflow_id: workflowId,
+  async getBlockSuggestions(
+    workflowId: string,
+    blockId: string,
+  ): Promise<Record<string, string[]>[]> {
+    const data = await postJson<unknown>('/workflow.autosuggestion', {
+      workflowId,
+      blockid: blockId,
     });
-    return data.Result || [];
+    return Array.isArray(data) ? (data as Record<string, string[]>[]) : [];
   },
 
   /** Run the workflow; resolves with the execution log id (0 when logging is off). */

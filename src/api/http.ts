@@ -138,6 +138,35 @@ export async function postForm<T = unknown>(
 }
 
 /** POST a form and require JSON back. */
+/**
+ * POST a raw JSON body.
+ *
+ * `workflow.all` reads its filters with
+ * `json_decode(file_get_contents("php://input"))` rather than from `$_POST`, so
+ * it needs an actual JSON document — a form-encoded body arrives as `null`
+ * there. It also `echo`es its result and exits, so the reply is bare JSON with
+ * no platform envelope.
+ */
+export async function postJsonBody<T>(url: string, body?: unknown): Promise<T> {
+  const { text, res } = await request(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    // `undefined` sends no body at all; `json_decode('')` yields null there, and
+    // the controller only ever does `isset()` checks on it.
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  assertNotLoginPage(text);
+
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new PlatformError(
+      res.ok ? `Unreadable response from ${url}.` : `${url} failed (${res.status}).`,
+      res.status,
+    );
+  }
+}
+
 export async function postJson<T = PlatformEnvelope>(
   url: string,
   params: Record<string, FormValue>,
