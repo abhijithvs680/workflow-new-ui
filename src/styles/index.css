@@ -43,7 +43,7 @@
 
   /* Near-white canvas with a fine dot grid, as the n8n editor uses. */
   --canvas-bg: #fafafa;
-  --canvas-dot: #c0c0c0;
+  --canvas-dot: #a8a8a8;
 
   --ok: #17803d;
   --ok-bg: #e8f6ed;
@@ -55,7 +55,7 @@
   --branch-yes: #6b6b75;
   --branch-no: #6b6b75;
   /* n8n draws connections as plain grey; state colour is carried by the node. */
-  --edge: #8b8b93;
+  --edge: #6b6b75;
 
   /* n8n radii: 4 small · 6 default · 8 cards and node bodies. */
   --radius-sm: 4px;
