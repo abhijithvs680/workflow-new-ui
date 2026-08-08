@@ -67,7 +67,10 @@ function looksLikeHtmlPage(text: string): boolean {
 
 /** A login redirect renders as a full HTML page where JSON was expected. */
 function assertNotLoginPage(text: string): void {
-  if (looksLikeHtmlPage(text)) throw new PlatformError(SESSION_EXPIRED, 401);
+  if (looksLikeHtmlPage(text)) {
+    window.location.href = '/user.signin';
+    throw new PlatformError(SESSION_EXPIRED, 401);
+  }
 }
 
 async function request(url: string, init: RequestInit): Promise<{ text: string; res: Response }> {
@@ -80,6 +83,12 @@ async function request(url: string, init: RequestInit): Promise<{ text: string; 
       0,
     );
   }
+  
+  if (res.redirected && res.url.includes('/user.signin')) {
+    window.location.href = '/user.signin';
+    throw new PlatformError(SESSION_EXPIRED, 401);
+  }
+
   const text = await res.text();
   return { text, res };
 }
