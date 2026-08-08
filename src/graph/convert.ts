@@ -36,7 +36,7 @@ export function isEntryType(type: string): boolean {
 export const EDGE_COLORS = {
   yes: '#22c55e',
   no: '#ef4444',
-  plain: '#c5ccd6',
+  plain: '#000000',
   taken: '#1e3a8a',
 } as const;
 
