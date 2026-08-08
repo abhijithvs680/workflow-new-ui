@@ -423,7 +423,7 @@ export default function WorkflowSettings({
             <div className="viz-settings-actions">
               <button
                 type="button"
-                className={`viz-settings-action${enableLog ? ' is-active' : ''}`}
+                className={`viz-settings-action${!enableLog ? ' is-active' : ''}`}
                 title="Execution log — record a log for every run"
                 aria-pressed={enableLog}
                 disabled={savingRuntime}
