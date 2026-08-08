@@ -698,34 +698,13 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
     setPendingSourceId(null);
   }, [onSave]);
 
-  const onAutoLayout = useCallback(async () => {
+  const onAutoLayout = useCallback(() => {
     if (!requireEditing()) return;
     const next = layout(nodesRef.current, edgesRef.current, 'LR');
     setNodes(next);
-    setBusy(true);
-    try {
-      // Positions live in the session until /workflow.save commits them, and
-      // the classic canvas re-seeds from Mongo — so persist immediately.
-      await Promise.all(
-        next.map((n) => session.moveBlock(workflowId, n.id, n.position.x, n.position.y)),
-      );
-      const res = await workflowApi.save(workflowId, workflowName || boot.workflowName);
-      if (!platformSaveOk(res)) {
-        setDirty(true);
-        const failed = platformMessages(res).find((m) => m.type === 'error' || m.type === 'danger');
-        notify(failed?.text || 'Arrange saved the layout, but the workflow save failed.', 'error');
-        return;
-      }
-      setDirty(false);
-      fitView({ padding: 0.18, duration: 250, maxZoom: 1.2 });
-      notify('Arranged and saved.', 'success');
-    } catch (e) {
-      setDirty(true);
-      notify(errorText(e, 'Arrange failed.'), 'error');
-    } finally {
-      setBusy(false);
-    }
-  }, [boot.workflowName, fitView, notify, requireEditing, workflowId, workflowName]);
+    setDirty(true);
+    setTimeout(() => fitView({ padding: 0.18, duration: 250, maxZoom: 1.2 }), 50);
+  }, [fitView, requireEditing]);
 
   /* ---------------------------------------------------------------------- */
   /* Running and debugging                                                   */

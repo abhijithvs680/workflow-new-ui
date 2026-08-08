@@ -192,7 +192,7 @@ export default function Toolbar(props: ToolbarProps) {
             className="viz-btn"
             onClick={props.onAutoLayout}
             disabled={busy}
-            title="Arrange left-to-right and save, so the classic canvas matches"
+            title="Arrange left-to-right"
           >
             <LayoutIcon /> Arrange
           </button>
