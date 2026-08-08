@@ -1,10 +1,9 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import {
   fetchApps,
   fetchDocuments,
   fetchSpreadsheetColumns,
   fetchSpreadsheets,
-  searchWorkflows,
   type Option,
 } from '@/api/lookups';
 import { errorText } from '@/api/http';
@@ -12,12 +11,16 @@ import { PlusIcon, TrashIcon } from '../ui/icons';
 import { InlineError, Spinner } from '../ui/feedback';
 import { AutocompleteInput } from '../ui/AutocompleteInput';
 import Select from '../ui/Select';
+import WorkflowPicker from '../ui/WorkflowPicker';
+import SkillsEditor, { SecretInput } from './SkillsEditor';
+import SqlQueryEditor from './SqlQueryEditor';
 import {
   FILTER_OPERATORS,
   type Field,
   type FilterRow,
   type ParamRow,
   type RowsetColumn,
+  type SkillsValue,
   type SortRow,
   type Values,
   type VariablePair,
@@ -467,62 +470,138 @@ function RowsetEditor({
   );
 }
 
-function WorkflowSearchField({
+/**
+ * Multi-select over an app's spreadsheets, storing their short codes.
+ *
+ * The Agent Node keys its data access off short codes rather than sheet ids,
+ * because that is what the MCP mirror tables are named after.
+ */
+function SpreadsheetCodesEditor({
+  appId,
+  value,
+  onChange,
+}: {
+  appId: string;
+  value: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const { options: sheets, busy, error } = useAsyncOptions(() => fetchSpreadsheets(appId), [appId]);
+
+  const withCodes = useMemo(() => sheets.filter((s) => s.shortCode), [sheets]);
+  const labels = useMemo(
+    () => new Map(withCodes.map((s) => [s.shortCode as string, s.label])),
+    [withCodes],
+  );
+
+  const toggle = (code: string, on: boolean) =>
+    onChange(on ? [...value.filter((c) => c !== code), code] : value.filter((c) => c !== code));
+
+  return (
+    <div className="viz-ss-codes">
+      <div className="viz-chips">
+        {value.length === 0 ? <span className="viz-chips-empty">No spreadsheets selected</span> : null}
+        {value.map((code) => (
+          <span className="viz-chip" key={code}>
+            {labels.get(code) || code}
+            <button type="button" aria-label={`Remove ${code}`} onClick={() => toggle(code, false)}>
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {!appId ? (
+        <p className="viz-field-help">Choose an app first.</p>
+      ) : busy ? (
+        <Spinner label="Loading spreadsheets…" />
+      ) : (
+        <div className="viz-ss-list">
+          {withCodes.length === 0 ? (
+            <p className="viz-field-help">This app has no spreadsheets.</p>
+          ) : (
+            withCodes.map((sheet) => {
+              const code = sheet.shortCode as string;
+              return (
+                <label className="viz-checkbox" key={sheet.value}>
+                  <input
+                    type="checkbox"
+                    checked={value.includes(code)}
+                    onChange={(e) => toggle(code, e.target.checked)}
+                  />
+                  <span>
+                    {sheet.label} <em className="viz-ss-code">{code}</em>
+                  </span>
+                </label>
+              );
+            })
+          )}
+        </div>
+      )}
+
+      {error ? <InlineError>{error}</InlineError> : null}
+    </div>
+  );
+}
+
+/** Textarea for a JSON property, reporting a parse error as you leave the box. */
+function JsonEditor({
   id,
   value,
+  rows,
+  placeholder,
+  expect,
   onChange,
 }: {
   id: string;
   value: string;
+  rows: number;
+  placeholder?: string;
+  expect?: 'array' | 'object';
   onChange: (next: string) => void;
 }) {
-  const [term, setTerm] = useState('');
-  const [results, setResults] = useState<Option[]>([]);
-  const [busy, setBusy] = useState(false);
-  const timer = useRef<number>();
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    window.clearTimeout(timer.current);
-    // Debounced: the endpoint runs a Mongo scan per keystroke otherwise.
-    timer.current = window.setTimeout(() => {
-      setBusy(true);
-      searchWorkflows(term)
-        .then(setResults)
-        .catch(() => setResults([]))
-        .finally(() => setBusy(false));
-    }, 280);
-    return () => window.clearTimeout(timer.current);
-  }, [term]);
-
-  const listId = `${id}-list`;
+  const validate = (raw: string) => {
+    const text = raw.trim();
+    if (!text) {
+      setError('');
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch (e) {
+      setError(`Invalid JSON: ${(e as Error).message}`);
+      return;
+    }
+    if (expect === 'array' && !Array.isArray(parsed)) {
+      setError('This must be a JSON array.');
+      return;
+    }
+    if (expect === 'object' && (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed))) {
+      setError('This must be a JSON object.');
+      return;
+    }
+    setError('');
+  };
 
   return (
-    <div className="viz-combo">
-      <input
+    <>
+      <textarea
         id={id}
-        className="viz-input"
-        list={listId}
-        placeholder="Search workflows by name…"
-        value={term || value}
+        className="viz-textarea is-mono"
+        rows={rows}
+        spellCheck={false}
+        placeholder={placeholder}
+        value={value}
         onChange={(e) => {
-          setTerm(e.target.value);
-          // Selecting from the datalist yields the id directly.
-          const hit = results.find((r) => r.value === e.target.value || r.label === e.target.value);
-          if (hit) {
-            onChange(hit.value);
-            setTerm(hit.label);
-          }
+          onChange(e.target.value);
+          if (error) setError('');
         }}
+        onBlur={(e) => validate(e.target.value)}
       />
-      <datalist id={listId}>
-        {results.map((r) => (
-          <option key={r.value} value={r.value}>
-            {r.label}
-          </option>
-        ))}
-      </datalist>
-      {busy ? <Spinner /> : null}
-    </div>
+      {error ? <InlineError>{error}</InlineError> : null}
+    </>
   );
 }
 
@@ -536,9 +615,15 @@ export interface FieldRendererProps {
   onChange: (name: string, value: unknown) => void;
   /** Columns of the currently selected spreadsheet, for autocomplete. */
   columns: string[];
+  /**
+   * The form's `fieldset[disabled]` covers every control it contains, but a
+   * field that opens a portalled dialog renders outside it — so those have to
+   * be told directly.
+   */
+  readOnly?: boolean;
 }
 
-export default function FieldRenderer({ field, values, onChange, columns }: FieldRendererProps) {
+export default function FieldRenderer({ field, values, onChange, columns, readOnly }: FieldRendererProps) {
   const id = useId();
   const value = values[field.name];
   const set = (next: unknown) => onChange(field.name, next);
@@ -681,7 +766,57 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
     case 'workflowSearch':
       return (
         <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
-          <WorkflowSearchField id={id} value={String(value ?? '')} onChange={set} />
+          <WorkflowPicker id={id} value={String(value ?? '')} onChange={(shortCode) => set(shortCode)} />
+        </Row>
+      );
+
+    case 'sql':
+      return (
+        <Row id={id} label={field.label} help={field.help} required={field.required} full>
+          <SqlQueryEditor
+            id={id}
+            value={String(value ?? '')}
+            appId={String(values[field.dependsOn] ?? '')}
+            rows={field.rows}
+            placeholder={field.placeholder}
+            onChange={set}
+          />
+        </Row>
+      );
+
+    case 'spreadsheetCodes':
+      return (
+        <Row id={id} label={field.label} help={field.help} required={field.required} full>
+          <SpreadsheetCodesEditor
+            appId={String(values[field.dependsOn] ?? '')}
+            value={(value as string[]) || []}
+            onChange={set}
+          />
+        </Row>
+      );
+
+    case 'skills':
+      return (
+        <Row id={id} label={field.label} help={field.help} full>
+          <SkillsEditor
+            value={(value as SkillsValue) || { selected: [], configs: {} }}
+            onChange={set}
+            readOnly={readOnly}
+          />
+        </Row>
+      );
+
+    case 'json':
+      return (
+        <Row id={id} label={field.label} help={field.help} required={field.required} full>
+          <JsonEditor
+            id={id}
+            value={String(value ?? '')}
+            rows={field.rows || 5}
+            placeholder={field.placeholder}
+            expect={field.expect}
+            onChange={set}
+          />
         </Row>
       );
 
@@ -732,6 +867,16 @@ export default function FieldRenderer({ field, values, onChange, columns }: Fiel
 
     default: {
       const type = field.kind === 'number' ? 'number' : field.kind === 'email' ? 'email' : 'text';
+      // A credential is masked behind a reveal toggle rather than autocompleted:
+      // there is nothing useful to suggest, and shoulder-surfing a pasted key is
+      // the more likely problem.
+      if (field.kind === 'text' && field.secret) {
+        return (
+          <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
+            <SecretInput id={id} secret placeholder={field.placeholder} value={String(value ?? '')} onChange={set} />
+          </Row>
+        );
+      }
       return (
         <Row id={id} label={field.label} help={field.help} required={field.required} full={field.full} half={field.half}>
           {type === 'text' ? (

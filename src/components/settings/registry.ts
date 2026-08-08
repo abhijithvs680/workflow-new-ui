@@ -567,6 +567,41 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
     hydrateExtra: sourceModeHydrate,
   },
 
+  /**
+   * Relational Filter reads through the MCP mirrors rather than the spreadsheet
+   * engine, so it has no filter rows — the SELECT is the filter. The App picker
+   * exists only to scope `{!short_code!}` autocomplete; the query names its own
+   * tables, and `RelationalFilterBlock` rewrites each reference to `ss_CODE`.
+   */
+  relationalfilter: {
+    title: 'Relational Filter',
+    summary: 'Reads rows with a read-only PostgreSQL SELECT across spreadsheet mirrors.',
+    layout: 'untabbed',
+    groups: [
+      group('Database selection', [
+        {
+          kind: 'app',
+          name: 'd_master_ssid',
+          label: 'App',
+          help: 'Sets which spreadsheets the query editor offers. It does not restrict the query.',
+        },
+      ]),
+      group('SQL query', [
+        {
+          kind: 'sql',
+          name: 'sql_query',
+          label: 'SQL Query',
+          dependsOn: 'd_master_ssid',
+          required: true,
+          rows: 12,
+          placeholder:
+            'SELECT * FROM {!EMP001!} e JOIN {!DEPT001!} d ON e.dept_id = d._row_id WHERE e.salary > {amount}',
+          help: 'One SELECT statement. Writes and DDL are refused, and results are capped at 500 rows.',
+        },
+      ]),
+    ],
+  },
+
   ssdeleterow: {
     title: 'Spreadsheet Delete Row',
     summary: 'Deletes every row matching the filter.',
@@ -838,6 +873,124 @@ export const BLOCK_SCHEMAS: Record<string, BlockSchema> = {
       ]),
     ],
     defaults: { searchsource: 'mysource' },
+  },
+
+  /**
+   * The five groups are the five tabs of the classic `agentNodeBlock.tpl`
+   * dialog, in the same order and carrying the same fields — Model,
+   * Instructions, Data access, Streaming & orchestration, Capabilities.
+   */
+  agentnode: {
+    title: 'Agent Node',
+    summary: 'Calls an LLM and lets it use tools, workflows and messaging skills to finish the task.',
+    layout: 'untabbed',
+    groups: [
+      group('Model', [
+        select(
+          'provider',
+          'LLM Provider',
+          options(
+            ['gemini', 'Google Gemini'],
+            ['openai', 'OpenAI'],
+            ['anthropic', 'Anthropic (Claude)'],
+            ['on-premises', 'On-Premises (OpenAI Compatible)'],
+          ),
+          { required: true },
+        ),
+        text('model', 'Model', {
+          required: true,
+          placeholder: 'e.g. gemini-2.5-pro, gpt-4o, claude-sonnet-4',
+        }),
+        text('api_key', 'API Key / Base URL', {
+          required: true,
+          secret: true,
+          placeholder: 'API key — or the base URL for an on-premises endpoint',
+        }),
+        text('temperature', 'Temperature', { half: true, placeholder: '0.7' }),
+        text('max_tokens', 'Max output tokens', { half: true, placeholder: '4096' }),
+      ]),
+
+      group('Instructions', [
+        textarea('system_prompt', 'System Prompt', {
+          rows: 5,
+          placeholder: 'You are a helpful assistant...',
+          help: 'Schemas for the selected spreadsheets and guidance for the enabled skills are appended to this automatically.',
+        }),
+        textarea('prompt', 'Prompt', {
+          rows: 8,
+          required: true,
+          placeholder: 'Enter the prompt. Use {variableName} to reference previous block outputs.',
+          help: '{variableName} pulls a field from the previous block, {BlockLabel.field} from any earlier one. Unresolved braces are left as-is.',
+        }),
+      ]),
+
+      group('Data access', [
+        { kind: 'app', name: 'd_master_ssid', label: 'App' },
+        {
+          kind: 'spreadsheetCodes',
+          name: 'ss_shortcodes',
+          label: 'Spreadsheets',
+          dependsOn: 'd_master_ssid',
+          help: 'The agent can query exactly these sheets through query_database, with their schema injected into the prompt. A query naming any other table is refused.',
+        },
+      ]),
+
+      group('Streaming & orchestration', [
+        select('stream', 'Stream Response', options(['false', 'No'], ['true', 'Yes (real-time to UI)'])),
+        text('identifier', 'Stream Identifier', {
+          placeholder: 'e.g. guid_12345 (auto-set from trigger)',
+          when: (v) => v.stream === 'true',
+        }),
+        text('identifier_value', 'Identifier Value', {
+          placeholder: 'Target user GUID for streaming',
+          when: (v) => v.stream === 'true',
+        }),
+        text('tags', 'Socket Event Tag', {
+          placeholder: 'new_message',
+          when: (v) => v.stream === 'true',
+        }),
+        select('is_sub_agent', 'Is Sub Agent', options(['false', 'False'], ['true', 'True']), {
+          help: 'Turn on when a parent agent in another workflow calls this one as a sub-agent. Every streamed chunk is then tagged with the sub-agent ID so the UI can tell the agents apart.',
+        }),
+        text('sub_agent_id', 'Unique Sub-Agent ID', {
+          placeholder: '{sub_agent_id}',
+          when: (v) => v.is_sub_agent === 'true',
+          help: 'The ID handed down by the parent agent node. Leave it as {sub_agent_id} to take whatever the parent passes in, or hard-code a value. Falls back to the block label.',
+        }),
+        text('sub_agent_label', 'Sub-Agent Display Name', {
+          placeholder: 'e.g. Research Agent',
+          when: (v) => v.is_sub_agent === 'true',
+          help: 'Optional label sent with the stream for the UI to show. Defaults to the sub-agent ID.',
+        }),
+      ]),
+
+      group('Capabilities', [
+        {
+          kind: 'skills',
+          name: 'skills',
+          label: 'Skills',
+          help: 'Switch a skill on to give the agent a new capability, then configure it.',
+        },
+        {
+          kind: 'json',
+          name: 'tools',
+          label: 'External Tools (JSON)',
+          expect: 'array',
+          rows: 6,
+          placeholder:
+            '[{"name":"get_weather","description":"Get current weather for a city","url":"https://api.weather.com/v1/current","method":"GET","parameters":{"type":"object","properties":{"city":{"type":"string","description":"City name"}},"required":["city"]},"auth":{"type":"bearer","token":"YOUR_KEY"}}]',
+          help: 'JSON array of external API tools. Each needs name, description, url, method (GET/POST/PUT/DELETE) and parameters (JSON Schema); auth (bearer/basic/api_key) and headers are optional.',
+        },
+      ]),
+    ],
+    defaults: {
+      provider: 'gemini',
+      temperature: '0.7',
+      max_tokens: '4096',
+      stream: 'false',
+      is_sub_agent: 'false',
+      tags: 'new_message',
+    },
   },
 
   roveragent: {

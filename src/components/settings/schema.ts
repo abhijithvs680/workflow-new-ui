@@ -34,6 +34,15 @@ export interface ParamRow {
   value: string;
 }
 
+/**
+ * Value behind the `skills` field kind: which skills are switched on, and the
+ * raw JSON each one is configured with (keyed by skill id).
+ */
+export interface SkillsValue {
+  selected: string[];
+  configs: Record<string, string>;
+}
+
 interface FieldBase {
   /** Platform input name. Also the key in the dialog's value map. */
   name: string;
@@ -58,6 +67,8 @@ export type Field =
       kind: 'text' | 'textarea' | 'number' | 'email' | 'url';
       rows?: number;
       monospace?: boolean;
+      /** Mask the value behind a reveal toggle — API keys and tokens. */
+      secret?: boolean;
       /**
        * Renders the template's "Click to Generate" action under the label.
        * `columnAlias` fills the box with `col as col` for every column of the
@@ -90,6 +101,21 @@ export type Field =
    * and String blocks.
    */
   | (FieldBase & { kind: 'rowset'; columns: RowsetColumn[]; addLabel?: string })
+  /**
+   * Read-only SELECT editor for the Relational Filter block. Typing `{!` offers
+   * the short codes of the spreadsheets in the app chosen in `dependsOn`, and
+   * the block rewrites `{!CODE!}` to the `ss_CODE` mirror table at run time.
+   */
+  | (FieldBase & { kind: 'sql'; dependsOn: string; rows?: number })
+  /**
+   * Multi-select over the spreadsheets of the app in `dependsOn`, stored as the
+   * comma-separated short-code list the Agent Node reads (`ss_shortcodes`).
+   */
+  | (FieldBase & { kind: 'spreadsheetCodes'; dependsOn: string })
+  /** Agent Node skills: the enabled set plus each skill's JSON configuration. */
+  | (FieldBase & { kind: 'skills' })
+  /** Free JSON, validated as you leave the box. Stored as the raw string. */
+  | (FieldBase & { kind: 'json'; rows?: number; expect?: 'array' | 'object' })
   /** Read-only explanatory row. */
   | (FieldBase & { kind: 'note'; text: string });
 

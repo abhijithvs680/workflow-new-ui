@@ -405,6 +405,7 @@ export default function BlockSettingsDialog({
                             values={values}
                             onChange={setValue}
                             columns={columns}
+                            readOnly={readOnly}
                           />
                         ))}
                       </div>

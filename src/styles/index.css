@@ -3577,3 +3577,284 @@ a.viz-settings-version-date:focus-visible {
   justify-content: flex-end;
   padding: var(--space-1) var(--space-3) 0;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Relational Filter — SQL query editor                                       */
+/* -------------------------------------------------------------------------- */
+
+.viz-sql {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.viz-sql-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.viz-sql-ops {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz-sql-ops span {
+  padding: 2px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-600);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.viz-sql-ops em {
+  color: var(--ink-400);
+  font-size: var(--text-xs);
+  font-style: normal;
+}
+
+/* Pushes the copy button to the right edge of the bar. */
+.viz-sql-status {
+  flex: 1 1 auto;
+  color: var(--ink-400);
+  font-size: var(--text-xs);
+}
+
+.viz-sql-status.is-ready {
+  color: var(--ok);
+}
+
+.viz-sql-copied {
+  color: var(--ink-500);
+  font-size: var(--text-xs);
+}
+
+.viz-sql-editor {
+  position: relative;
+}
+
+.viz-sql-input {
+  line-height: 1.6;
+  tab-size: 2;
+  resize: vertical;
+}
+
+/* The suggestion list is anchored to the editor, not the caret: a textarea
+   gives no caret coordinates without mirroring its content. */
+.viz-sql-suggestions {
+  top: auto;
+  bottom: 8px;
+  max-height: 190px;
+}
+
+.viz-sql-suggestions li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.viz-sql-suggestions li.is-empty {
+  color: var(--ink-400);
+  cursor: default;
+}
+
+.viz-sql-code {
+  color: var(--ink-400);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+}
+
+.viz-sql-guides {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.viz-sql-guides > div {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.viz-sql-guides code {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+.viz-sql-guides span {
+  color: var(--ink-500);
+  font-size: var(--text-xs);
+}
+
+.viz-sql-guides .is-warning code {
+  color: var(--danger);
+}
+
+@media (max-width: 860px) {
+  .viz-sql-guides {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Agent Node — spreadsheet access, skills                                    */
+/* -------------------------------------------------------------------------- */
+
+.viz-ss-codes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.viz-ss-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 190px;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.viz-ss-code {
+  color: var(--ink-400);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-style: normal;
+}
+
+.viz-skills {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: var(--space-2);
+}
+
+.viz-skill-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+}
+
+.viz-skill-card.is-on {
+  border-color: var(--primary-100);
+  background: var(--primary-050);
+}
+
+.viz-skill-toggle span {
+  font-weight: 600;
+}
+
+.viz-skill-blurb {
+  flex: 1 1 auto;
+  color: var(--ink-500);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+}
+
+.viz-skill-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Dot plus label, so "configured" reads without relying on colour alone. */
+.viz-skill-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--ink-400);
+  font-size: var(--text-xs);
+}
+
+.viz-skill-state::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-300);
+}
+
+.viz-skill-state.is-ready {
+  color: var(--ok);
+}
+
+.viz-skill-state.is-ready::before {
+  background: var(--ok);
+}
+
+.viz-secret {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.viz-secret .viz-input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Workflow skill — one card per workflow tool the agent may call. */
+.viz-wf-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.viz-wf-card {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.viz-wf-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin: calc(var(--space-3) * -1) calc(var(--space-3) * -1) 0;
+  padding: 8px var(--space-3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-sunken);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.viz-wf-subhead {
+  color: var(--ink-500);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.viz-wf-params-grid {
+  grid-template-columns: minmax(0, 1.1fr) 130px minmax(0, 2fr) 40px 28px;
+  min-width: 520px;
+}
+
+.viz-wf-tail {
+  margin-top: var(--space-2);
+}

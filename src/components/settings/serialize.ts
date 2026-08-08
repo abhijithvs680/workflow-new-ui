@@ -17,10 +17,12 @@ import type {
   Field,
   FilterRow,
   ParamRow,
+  SkillsValue,
   SortRow,
   Values,
   VariablePair,
 } from './schema';
+import { SKILL_CONFIG_KEYS, type SkillId } from './skills';
 
 function asString(value: unknown): string {
   if (value == null) return '';
@@ -123,6 +125,26 @@ function hydrateField(field: Field, props: BlockProperties, defaults: Values): u
         : [Object.fromEntries(field.columns.map((c) => [c.name, c.defaultValue ?? '']))];
     }
 
+    case 'spreadsheetCodes': {
+      const raw = asString(stored) || asString(fallback);
+      return raw
+        .split(',')
+        .map((code) => code.trim())
+        .filter(Boolean);
+    }
+
+    case 'skills': {
+      const selected = asString(props.skills)
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean);
+      const configs: Record<string, string> = {};
+      (Object.keys(SKILL_CONFIG_KEYS) as SkillId[]).forEach((id) => {
+        configs[id] = asString(props[SKILL_CONFIG_KEYS[id]]);
+      });
+      return { selected, configs } as SkillsValue;
+    }
+
     case 'note':
       return null;
 
@@ -214,6 +236,24 @@ function serializeField(field: Field, values: Values, out: Record<string, FormVa
       const used = first ? rows.filter((r) => String(r[first] ?? '').trim() !== '') : rows;
       field.columns.forEach((col) => {
         out[col.name] = used.map((r) => String(r[col.name] ?? ''));
+      });
+      return;
+    }
+
+    case 'spreadsheetCodes': {
+      const codes = (Array.isArray(value) ? value : []) as string[];
+      out[field.name] = codes.map((code) => code.trim()).filter(Boolean).join(',');
+      return;
+    }
+
+    case 'skills': {
+      const skills = (value || { selected: [], configs: {} }) as SkillsValue;
+      out.skills = skills.selected.join(',');
+      // Every config property is written on every save, including the empty
+      // ones: `customblockPropInsert` replaces `block_properties` wholesale, so
+      // a key left out is a key deleted from the workflow.
+      (Object.keys(SKILL_CONFIG_KEYS) as SkillId[]).forEach((id) => {
+        out[SKILL_CONFIG_KEYS[id]] = skills.configs[id] || '';
       });
       return;
     }

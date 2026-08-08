@@ -26,6 +26,7 @@ const SKIN_BY_TYPE: Record<string, string> = {
 
   roverai: 'ai',
   roveragent: 'ai',
+  agentnode: 'ai',
 
   sendmail: 'action',
   notify: 'action',
@@ -37,6 +38,7 @@ const SKIN_BY_TYPE: Record<string, string> = {
 
   ssdatafilter: 'filter',
   ssadvdatafilter: 'filter',
+  relationalfilter: 'filter',
   uniquevalidator: 'filter',
   formrule: 'filter',
   ruleengine: 'filter',

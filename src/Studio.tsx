@@ -1032,8 +1032,6 @@ function Canvas({ boot, onReloadRequested }: StudioProps) {
               nodesConnectable={editing && !run}
               connectOnClick
               elementsSelectable
-              panOnScroll
-              selectionOnDrag
               zoomOnDoubleClick={false}
               deleteKeyCode={editing && !run ? ['Backspace', 'Delete'] : null}
               multiSelectionKeyCode={['Meta', 'Control', 'Shift']}
