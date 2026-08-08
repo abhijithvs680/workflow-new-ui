@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 
 /**
- * The app is hosted as plain static files at `v1-web-app/workflow/`, whose own
+ * The app is hosted as plain static files at `v1-web-app/workflows/`, whose own
  * `.htaccess` sends anything that is not a real file to `dist/index.html`:
  *
  *   RewriteCond %{REQUEST_FILENAME} !-f
@@ -12,22 +12,22 @@ import { fileURLToPath, URL } from 'node:url';
  *   DirectoryIndex dist/index.html
  *
  * So the served document lives one level down, and every asset URL has to be
- * absolute against `/workflow/dist/` — a relative base would resolve against
+ * absolute against `/workflows/dist/` — a relative base would resolve against
  * whatever path the user happened to land on. Routing is hash-based
- * (`/workflow/#/list`), which the rewrite never sees.
+ * (`/workflows/#/list`), which the rewrite never sees.
  */
-export const APP_BASE = '/workflow/';
-const BUILD_BASE = '/workflow/dist/';
+export const APP_BASE = '/workflows/';
+const BUILD_BASE = '/workflows/dist/';
 
 /**
  * Platform prefixes the dev server must forward so the browser stays
- * same-origin (session cookie + no CORS). `/workflow/` is included for
+ * same-origin (session cookie + no CORS). `/workflows/` is included for
  * `log.debugdata`, but the app's own base lives under it, so the filter below
  * excludes it explicitly.
  */
 const PLATFORM_PREFIXES = [
   '/workflow.',
-  '/workflow/',
+  '/workflows/',
   '/ls/',
   '/sys/',
   '/ui-themes/',
@@ -42,15 +42,15 @@ function platformProxy(target: string): Record<string, ProxyOptions> {
     // Platform dev certificates are self-signed.
     secure: false,
     // Deliberately no `ws`: the app opens no sockets, and forwarding upgrades
-    // under /workflow/ would swallow Vite's own HMR socket, which lives under
+    // under /workflows/ would swallow Vite's own HMR socket, which lives under
     // the app base.
     cookieDomainRewrite: '',
   };
 
   const rules: Record<string, ProxyOptions> = {};
   for (const prefix of PLATFORM_PREFIXES) {
-    rules[prefix] = prefix === '/workflow/'
-      // The app base is now `/workflow/` itself, so "starts with the base" no
+    rules[prefix] = prefix === '/workflows/'
+      // The app base is now `/workflows/` itself, so "starts with the base" no
       // longer separates app from platform. The platform's own endpoints under
       // this prefix are all `<name>.<action>` in the first segment
       // (`log.debugdata`, `connection.properties`); everything else — the shell,

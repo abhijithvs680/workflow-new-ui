@@ -1,7 +1,7 @@
 /**
  * Hash routing.
  *
- * The app is served from `/workflow/`, whose `.htaccess` rewrites every
+ * The app is served from `/workflows/`, whose `.htaccess` rewrites every
  * non-file request to `dist/index.html`. Routing therefore lives entirely in
  * the hash — Apache never sees it, so any route reloads cleanly and no server
  * config has to change when a route is added.
@@ -10,7 +10,7 @@
  *   #/debugger/<id-or-shortCode>    the canvas
  *   #/debugger/<id>?version=<vid>   read-only canvas for a saved version
  */
-export const APP_PATH = '/workflow/';
+export const APP_PATH = '/workflows/';
 
 export type Route =
   | { name: 'list' }
